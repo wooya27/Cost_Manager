@@ -1,0 +1,18 @@
+# Claude Code 개인 로컬 설정 (팀 공유 안 함)
+.claude/settings.local.json
+
+# 환경 변수 / 비밀
+.env
+.env.*
+!.env.example
+secrets/
+
+# 의존성
+node_modules/
+
+# 빌드 산출물
+dist/
+build/
+out/
+.next/
+coverage/
