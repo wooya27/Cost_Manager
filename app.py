@@ -35,6 +35,9 @@ if uploaded:
 
     night_sum = df[(df["category"]== "교통") & (df["amount"]>15000)]
     st.dataframe(night_sum)
+    night_over = df[(df["category"]== "교통") & (df["amount"]>30000) & (df["reason"]=="")]
+    st.dataframe(night_over)
+
 
     df.loc[df["has_receipt"]=="N","risk_type"]="영수증누락"
     df.loc[df["has_receipt"]=="N","risk_reason"]="영수증 없음" #별도 데이터 변수를 만든 게 아니기 때문
