@@ -3,6 +3,7 @@
 
 import streamlit as st
 import pandas as pd 
+from src.audit_rules import detect_risks
 
 st.title("AuditFlow AI")
 st.write("비용정산 1차 검수 어시스턴트")
@@ -26,19 +27,7 @@ if uploaded:
 
     cat_sum = df.groupby("category")["amount"].sum()
     st.write("카테고리별 합",cat_sum) 
-
-    no_receipt = df[df["has_receipt"]=="N"]
-    st.dataframe(no_receipt)
-
-    plus_sum = df[(df["category"]== "식대") & (df["amount"]>20000)]
-    st.dataframe(plus_sum)
-
-    night_sum = df[(df["category"]== "교통") & (df["amount"]>15000)]
-    st.dataframe(night_sum)
-    night_over = df[(df["category"]== "교통") & (df["amount"]>30000) & (df["reason"]=="")]
-    st.dataframe(night_over)
-
-
-    df.loc[df["has_receipt"]=="N","risk_type"]="영수증누락"
-    df.loc[df["has_receipt"]=="N","risk_reason"]="영수증 없음" #별도 데이터 변수를 만든 게 아니기 때문
+    df = detect_risks(df)
+    # df.loc[df["has_receipt"]=="N","risk_type"]="영수증누락"
+    # df.loc[df["has_receipt"]=="N","risk_reason"]="영수증 없음" #별도 데이터 변수를 만든 게 아니기 때문
     st.dataframe(df)
