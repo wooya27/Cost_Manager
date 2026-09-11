@@ -23,10 +23,17 @@ RISK_KEYWORDS = {
 
 
 
-def find_policy_evidence(risk_type): # 함수를 사용할때 값을 받아오는 입력칸
+def find_policy_evidence(risk_type,chunks): # 함수를 사용할때 값을 받아오는 입력칸
     # risk_type과 chunks는 이 함수를 만들면서 처음 등장해도 돼.
     keyword =RISK_KEYWORDS.get(risk_type)
-    for chunk in chunks:
+    if keyword is None:
+        return "관련 규정 확인 필요"   # 검색할 단어가 없다 ->확인해라
+    for chunk in chunks:  #chunks 안에 들어 있는 여러 규정 문단을 하나씩 꺼내서 chunk라는 이름으로 확인하겠다는 뜻이야.
         if keyword in chunk:
             return chunk      # 찾았으면 그 문단
-# 돌려주고 끝
+    # 돌려주고 끝
+    return "관련 규정 확인 필요"   # for문 다 돌고도 못 찾음
+
+
+# RISK_KEYWORDS.get(risk_type)--> ex)숙박비  =>RISK_KEYWORDS.get(risk_type)=None
+#
