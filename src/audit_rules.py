@@ -1,7 +1,8 @@
 # 위험을 찾는다
 
 def detect_risks(df):
-
+    # df.loc[조건, "risk_type"] = "..." 이게 무슨 뜻이냐면:
+    # 조건에 맞는 행의 risk_type 칸에 그 위험 이름을 써넣어라
     no_receipt = df[df["has_receipt"]=="N"]
 
     df.loc[df["has_receipt"]=="N","risk_type"]="영수증누락"

@@ -1,9 +1,11 @@
 # AuditFlow AI - app.py
 # 여기부터 블록 2에서 직접 채운다.
-
+# app.py가 실제로 "돌아가는 프로그램"이야
 import streamlit as st
 import pandas as pd 
 from src.audit_rules import detect_risks
+from src.policy_retriever import find_policy_evidence, chunks
+
 
 st.title("AuditFlow AI")
 st.write("비용정산 1차 검수 어시스턴트")
@@ -27,7 +29,17 @@ if uploaded:
 
     cat_sum = df.groupby("category")["amount"].sum()
     st.write("카테고리별 합",cat_sum) 
-    df = detect_risks(df)
+
+
+    #함수는 "만들어 두는 것"과 "실제로  실행하는 것"이 별개라는 거.
+    # from src.audit_rules import detect_risks 
+    # risk_type : 어떤 위험인지 ,chunks : 검색할 규정 문서들 
+    df = detect_risks(df) # detect_risks(df)가 risk_type컬럼을 만들어내는 함수다.
+    risk_explanation = []
+    for rt in df["risk_type"]:
+        ev = find_policy_evidence(rt, chunks)   # rt(한 행의 위험유형 값)를 넣고, 결과는 ev에
+        risk_explanation.append(ev)             # append는 한 개만: ev  append:ev에 들어 있는 값을 리스트 맨 뒤에 하나 추가하는 것이야.
+    df["policy_evidence"] = risk_explanation    # for 밖! 다 모은 뒤 컬럼으로
     # df.loc[df["has_receipt"]=="N","risk_type"]="영수증누락"
     # df.loc[df["has_receipt"]=="N","risk_reason"]="영수증 없음" #별도 데이터 변수를 만든 게 아니기 때문
     st.dataframe(df)
