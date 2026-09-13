@@ -43,3 +43,21 @@ if uploaded:
     # df.loc[df["has_receipt"]=="N","risk_type"]="영수증누락"
     # df.loc[df["has_receipt"]=="N","risk_reason"]="영수증 없음" #별도 데이터 변수를 만든 게 아니기 때문
     st.dataframe(df)
+
+    # ── 블록3: 검수용 요약 표 (위험유형 / 사유 / 규정 근거를 한 화면에) ──
+    risk_df = df[df["risk_type"].notna()]   # 위험이 잡힌 행만 골라내기 (risk_type이 비어있지 않은 행)
+    st.subheader("검수 결과 (위험 건)")
+    st.dataframe(
+        risk_df[["employee", "department", "category", "amount",
+                 "risk_type", "risk_reason", "policy_evidence"]]
+    )
+
+    # ── 규정 근거가 안 붙은 건 = 사람이 직접 확인해야 하는 목록 ──
+    missing_policy = df[df["policy_evidence"] == "관련 규정 확인 필요"]  # 함수 반환값과 글자를 정확히 맞춰야 걸러짐
+    missing_types = missing_policy["risk_type"].dropna().unique()
+    # dropna() : 비어있는 값 제외 / unique() : 중복 제거
+    st.subheader("규정 근거 확인 필요")
+    st.write("확인 필요 유형:", list(missing_types))
+    st.dataframe(
+        missing_policy[["employee", "category", "amount", "risk_type", "policy_evidence"]]
+    )

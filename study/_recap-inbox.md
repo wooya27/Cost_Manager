@@ -50,3 +50,53 @@
   + **들여쓰기 위치**: `df["policy_evidence"] = ...`를 for문 안에 두면 매 반복마다 실행됨. 리스트 다 모은 뒤 한 번만 하면 되니 **for 밖(같은 들여쓰기 높이 아님, for보다 왼쪽)** 으로 뺀다.
 
   **패턴으로 기억**: "빈 리스트 → for로 하나씩 꺼내 → 함수 돌려 결과 얻어 → append → 루프 끝나고 컬럼에 넣기". 이건 `detect_risks`가 컬럼 만든 것과 같은 계열(각 행 처리해서 새 컬럼 만들기). 관련: [[from-import-구조]]
+
+## [2026-09-13] 미니 RAG 핵심 4단어 의미 구분 (risk_type / RISK_KEYWORDS / keyword / policy_evidence)
+
+- Q(내 질문): risk_type, RISK_KEYWORDS, keyword, policy_evidence가 각각 뭔지 자꾸 헷갈린다.
+
+- A(핵심 답변):
+  **네 단어를 "흐름" 순서로 놓으면 헷갈림이 사라진다.** 위반 하나가 규정 근거를 찾아가는 파이프라인이다:
+
+  `risk_type` → (RISK_KEYWORDS로 변환) → `keyword` → (policy.txt에서 검색) → `policy_evidence`
+
+  | 단어 | 정체 | 어디 있나 | 예시 |
+  |---|---|---|---|
+  | `risk_type` | **지출위반 사유(유형)**. detect_risks가 각 행에 붙인 위험 이름 | df의 컬럼(값) | `"식대한도 초과"` |
+  | `RISK_KEYWORDS` | **변환표(딕셔너리)**. 위반유형 → 검색키워드 매핑. 내가 손으로 씀 | policy_retriever.py | `{"식대한도 초과":"식대", ...}` |
+  | `keyword` | **검색어 한 개**. RISK_KEYWORDS에서 꺼낸 값 | 함수 안 변수 | `"식대"` |
+  | `policy_evidence` | **규정 근거(결과)**. keyword로 policy.txt에서 찾아낸 규정 문단 | df의 새 컬럼 | `"[식대 규정] 일반 식대는..."` |
+
+  - `RISK_KEYWORDS`(전체 표)와 `keyword`(그 표에서 꺼낸 값 1개)는 **다른 것**. `keyword = RISK_KEYWORDS.get(risk_type)` — 표에서 하나 꺼내는 것.
+  - `risk_type`(입력, 위반 이름)과 `policy_evidence`(출력, 규정 문단)는 **파이프라인의 양 끝**. 앞은 "무슨 위반?", 뒤는 "무슨 규정 근거?".
+
+## [2026-09-13] find_policy_evidence의 두 실패 경우 (31행 vs 36행) — "키워드 뽑았는데 규정 없을 수 있나?"
+
+- Q(내 질문): 31행과 36행이 둘 다 "관련 규정 확인 필요"를 반환하는데 뭐가 다른가? 키워드를 뽑았는데 규정이 없을 수 있다는 게 이해가 안 간다.
+
+- A(핵심 답변):
+  실패가 두 종류인데 지금 코드는 **똑같은 문자열**을 돌려줘서 화면에서 구분이 안 된다. 그래서 헷갈렸던 것.
+
+  ```python
+  keyword = RISK_KEYWORDS.get(risk_type)
+  if keyword is None:
+      return "관련 규정 확인 필요"   # ← 31행 = 경우 A
+  for chunk in chunks:
+      if keyword in chunk:
+          return chunk
+  return "관련 규정 확인 필요"       # ← 36행 = 경우 B
+  ```
+
+  - **경우 A (31행) = 매핑표에 아예 없음.** `RISK_KEYWORDS.get(risk_type)`가 None. 즉 이 위반유형이 딕셔너리 key에 없어서 **검색어조차 못 만든다.** (7종 중 미매핑 3종이 여기: 이상 비용 후보 / 야근 식대 한도초과 / 사무용품 추가 승인)
+  - **경우 B (36행) = 검색어는 만들었는데 규정 문서에 그 글자가 없음.** keyword는 정상으로 뽑혔지만, policy.txt 문단들을 다 뒤져도 `if keyword in chunk`(글자 그대로 포함 검사)가 한 번도 안 걸림.
+
+  **"키워드 뽑았는데 규정 없을 수 있나?" → 있다. 왜냐하면 둘은 서로 다른 파일에서 따로 관리되기 때문:**
+  - 키워드는 `RISK_KEYWORDS`(policy_retriever.py에 내가 손으로 씀)에서 나옴
+  - 규정은 `policy.txt`(별도 파일)에 있음
+  - 이 둘이 어긋나면 경우 B 발생. 두 가지 상황:
+    1. **철자 불일치**: 딕셔너리엔 `"택시비"`인데 policy.txt엔 "택시 요금"이라 적으면 → "택시비" 글자가 없어서 못 찾음
+    2. **문단 자체가 없음**: 예) `"사무용품 추가 승인":"사무용품"` 매핑만 추가하고 policy.txt에 사무용품 문단은 안 쓰면 → keyword "사무용품"은 뽑히지만 어느 chunk에도 없음 → 경우 B
+  - 그래서 매핑을 추가할 땐 **순서가 중요**: ① policy.txt에 규정 문단 먼저 → ② RISK_KEYWORDS에 매핑 추가. (반대로 하면 경우 B로 빠짐)
+  - 참고: 지금 데이터 기준으론 4개 키워드(식대·택시비·영수증·중복)가 전부 policy.txt에 있어서 **경우 B는 아직 실제로 발생 안 함**. 현재 "확인 필요"는 전부 경우 A.
+
+  관련: [[미니-RAG-4단어-의미]]
