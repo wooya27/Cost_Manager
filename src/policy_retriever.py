@@ -49,9 +49,9 @@ REQUEST_MESSAGE = { # risk_type : 그 위험에 맞는 보완 요청
     "사무용품 추가 승인": "사무용품 구매에 필요한 승인 내역을 확인해 주세요."
 }
 
-def make_request_message(risk_type,risk_request): # 함수를 사용할때 값을 받아오는 입력칸
-    # risk_type과 policy_messages는 이 함수를 만들면서 처음 등장해도 돼.
+def make_request_message(risk_type): 
+   
     risk_request =REQUEST_MESSAGE.get(risk_type)
     if risk_request is None:
-        return "요청사항을 작성하시오"   # 검색할 단어가 없다 ->확인해라
+        return "요청사항을 작성하시오"   
     return risk_request
