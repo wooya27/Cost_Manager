@@ -1,37 +1,67 @@
-# 오늘 할 일 (9/14 일) — Day9 보완 요청 초안 생성 · 3블록
+# 오늘 할 일 (9/15) — DAY1 (Day9~11) · 마무리플랜
 
-> Day 1~8 완료. 오늘은 **Day 9 = 보완 요청 초안** (절대 안 버리는 5개 중 3번).
-> 📌 9/14는 압축일정표(9/12까지) 밖 = 여유일. 남은 Day를 순서대로 이어감.
+> 기준 로드맵: **`AuditFlow_AI_Day9-14_2일_마무리플랜.md`** (오늘=Day9~11, 내일=Day12~14)
+> ✅ Day9 블록1(템플릿 `make_draft`)은 이미 완료 → 오늘은 **블록2(fallback)부터** 실제 시작.
 > 순서대로 위에서부터. 지금 집중은 👉 1개만. **세션 사이 10분 휴식.**
 
 ---
 
-## 블록 2 (30분) — LLM 호출 함수 연결 · 🧠 직접 작성  👉 지금 이거
-> Day9 블록2 · 규정 근거가 "있는" 건만 LLM으로 보강
-- [ ] LLM 호출 함수를 붙인다 (근거 있는 건만)
-- [ ] `draft_source`로 "template" / "llm" 구분 표시
-- 끝나면 보여야 할 결과: 근거를 넣으면 LLM 초안 1건이 생성된다
+## 블록 1 (30~40분) — Day9 fallback + `draft_source` · 🧠 직접 작성  👉 지금 이거
+> 템플릿이 "항상" 작동하는 게 핵심. LLM 실제 연결은 시간 남으면.
+- [ ] 모르는 `risk_type`도 기본 문구 나오는지 확인 (make_draft의 else 분기)
+- [ ] `draft_source = "template"` 값 생성 (나중 LLM과 구분용)
+- [ ] (여유 시) LLM 호출 붙이고 실패하면 try/except로 템플릿 fallback
+- 끝나면 보여야 할 결과: `draft_message` + `draft_source` 두 값이 항상 생성된다
 
-## 블록 3 (30분) — fallback 처리 · 🧠 직접 작성
-> Day9 블록3 · LLM 실패해도 앱이 안 죽게
-- [ ] LLM 호출 실패 시 try/except로 템플릿 초안으로 되돌린다
-- 끝나면 보여야 할 결과: LLM이 실패해도 앱이 죽지 않고 템플릿 초안이 나온다
+## 블록 2 (50분) — Day10 위험 건 상세 화면 · 🧠 직접 작성
+> 위험 건 하나 선택 → 사유/근거/초안 한 화면
+- [ ] `st.selectbox`로 위험 건 선택 → 선택한 행 가져오기
+- [ ] 신청자 / 금액 / 카테고리 / 위험유형·사유 / `policy_evidence` / `draft_message` 표시
+- 끝나면 보여야 할 결과: 위험 건 하나 고르면 사유+규정+초안이 한 화면에 뜬다 (디자인 X)
+
+## 블록 3 (40분) — Day10 검수 상태 (Human-in-the-loop) · 🧠 직접 작성
+> AI가 최종 승인 X, 사람이 마지막 확인
+- [ ] `review_status` 컬럼 추가 (기본값 `미검토`)
+- [ ] 상세 화면에서 상태 표시 (가능하면 미검토/보완요청/승인 선택 UI)
+- 끝나면 보여야 할 결과: 상세 화면에 "검수 상태: 미검토"가 보인다
+
+## 블록 4 (50분) — Day11 Dashboard · 🧠 직접 작성
+> 개별 건이 아니라 전체 현황 요약
+- [ ] 전체 신청 건수 / 위험 건수 / 총 신청 금액 계산 → `st.metric` 카드 3개
+- [ ] 위험 유형별 `value_counts()` → (가능하면) `st.bar_chart`
+- 끝나면 보여야 할 결과: 숫자 카드 3개 (+ 차트 1개면 완성)
+
+## 블록 5 (30분) — Day11 Agent 역할 정리 + 복습 · ✍️ 말로 설명
+> 새 코드 X. 이미 만든 기능을 Agent 관점으로 이름 붙이기
+- [ ] 4개 Agent 역할 매핑: 위험탐지→AuditRule / 규정검색→PolicySearch / 초안→DraftMessage / 검수→ReviewSupport
+- 끝나면 보여야 할 결과: "왜 역할을 이렇게 나눴는가"를 30초 말로 설명 가능
 
 ---
 
 ## 오늘 목표선
-- **최소선:** 블록1 = 템플릿 초안이 항상 생성 → 오늘 성공 (절대 안 버리는 5개 확보)
-- **목표:** 블록1~2 = 근거 있는 건 LLM 초안까지
-- **욕심선:** 블록3 = fallback까지 = Day9 완성
+- **최소선:** 블록1~2 = fallback + 상세화면 → 오늘 성공
+- **목표:** 블록1~4 = 검수상태 + Dashboard까지
+- **욕심선:** 블록5 = Agent 역할 정리 = **DAY1 완성**
 
 ## 오늘 배우는 개념
-- f-string / if-elif 템플릿
-- LLM API 호출
-- fallback 설계 (try/except)
+- fallback / `draft_source` 분기
+- `st.selectbox` + 행 선택 → 상세 표시
+- Human-in-the-loop (`review_status`)
+- `st.metric` / `value_counts()` / `st.bar_chart`
+- Agent 역할 분리 사고
 
 ## 막혔을 때 최소선
-- LLM 연결이 막히면 → **오늘은 템플릿(블록1)까지만.** LLM은 나중에 붙여도 된다. 템플릿이 먼저다.
+- LLM이 막히면 → 오늘은 템플릿 + `draft_source`만. LLM은 "줄여도 됨" 목록.
+- Dashboard 차트가 막히면 → 숫자 카드 3개만.
 - 15분 넘게 막히면 → 질문하기.
+
+---
+
+## 내일 (DAY2 · Day12~14) — 그날 옮겨 적음
+- Day12: CSV 다운로드(`to_csv`+`st.download_button`) + 입력 검증(필수 컬럼)
+- Day13: `agent_workflow.py` State/Node + 위험 1건 workflow 실행 (막히면 함수형)
+- Day14: `logs/llm_calls.jsonl` 로컬 로그 + README + 전체 점검
+- 이후: Day15 발표 스크립트 + 포트폴리오화
 
 ---
 ## 완료
