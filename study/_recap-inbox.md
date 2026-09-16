@@ -118,3 +118,61 @@
 
   **한 줄 정리**: row=한 줄(값 꺼내는 곳) / df=표 전체(.duplicated 같은 줄-비교 연산 쓰는 곳). 이미 계산된 결과는 다시 계산 말고 컬럼에서 읽어 쓴다.
   관련: [[for문-각행-함수-새컬럼]]
+
+## [2026-09-15] 값 2개 리턴 & 언패킹 (return a, b / x, y = f())
+
+- Q(내 질문): `return draft_message, draft_source`처럼 값 2개 돌려주는 거랑 받는 거 잘 모르겠어.
+
+- A(핵심 답변):
+  **개념**: 함수가 콤마로 값 2개를 묶어 돌려주면, 받을 때도 변수 2개로 나눠 받는다.
+  ```python
+  def make_draft(row):
+      ...
+      return draft_message, draft_source   # 값 2개를 콤마로 묶어 돌려줌
+
+  message, source = make_draft(row)        # 2개로 나눠 받음
+  ```
+  - **규칙**: 왼쪽 변수 개수 = 오른쪽 값 개수 (2=2). **순서도 그대로** (message가 앞, source가 뒤).
+  - 이렇게 "묶여서 온 걸 여러 변수로 푸는 것"을 **언패킹(unpacking)**. (택배 상자 1개 열어 물건 2개 꺼내기)
+  - **왜 썼나**: 초안 문장(`draft_message`)과 출처 꼬리표(`draft_source`="template")를 한 함수에서 같이 만들어 같이 돌려주려고.
+
+## [2026-09-15] for _, row in df.iterrows() — `_`의 의미 & 컬럼은 왜 for 밖
+
+- Q(내 질문): `for _, row in df.iterrows()`에서 `_`가 뭔지, 컬럼 붙이는 줄이 왜 for 밖이어야 하는지 모르겠어.
+
+- A(핵심 답변):
+  **최종 코드**:
+  ```python
+  draft_messages = []
+  draft_sources = []
+  for _, row in df.iterrows():          # iterrows()는 매번 (행번호, 행전체) 2개를 줌
+      message, source = make_draft(row) # 행 전체(row)를 함수에 넣고 값 2개 받기
+      draft_messages.append(message)    # ← for 안: 매 행마다 하나씩 쌓기
+      draft_sources.append(source)
+  df["draft_message"] = draft_messages  # ← for 밖: 다 쌓인 뒤 한 번에 컬럼으로
+  df["draft_source"] = draft_sources
+  ```
+
+  **`_`의 의미**: `df.iterrows()`는 한 줄 돌 때마다 **2개**(`행번호`, `행전체`)를 준다. 우리는 행번호는 안 쓰고 행 전체(`row`)만 필요. **안 쓸 자리에 `_`를 넣어 "이건 버린다"고 표시**하는 관례. (`x`라 써도 돌아가긴 함)
+  - ⚠️ `for row in df.iterrows()`처럼 하나로만 받으면 `row`에 `(행번호, 행)` 쌍이 통째로 들어가서 `make_draft`가 터진다. → 반드시 `_, row` 2개로.
+
+  **컬럼은 왜 for 밖?**: `df["draft_message"] = ...`는 리스트가 **다 채워진 뒤 한 번만** 하면 된다. for 안에 넣으면 매 행마다 붙였다 다시 붙였다 낭비. (요리 다 끝내고 접시에 담기, 재료 넣을 때마다 담는 거 아님) → 들여쓰기를 for보다 왼쪽으로 빼서 for 밖으로.
+
+  관련: [[for문-각행-함수-새컬럼]] (policy_evidence 만든 것과 완전 같은 패턴, 값이 2개라 리스트·컬럼이 2개일 뿐)
+
+## [2026-09-15] st.selectbox + .loc로 고른 행 상세 보기 (Day10 상세화면)
+
+- Q(내 질문): selectbox로 고른 값으로 그 행 전체를 어떻게 꺼내는지 모르겠어.
+
+- A(핵심 답변):
+  **최종 코드**:
+  ```python
+  selected = st.selectbox("확인할 위험 건을 선택", risk_df.index)  # 드롭다운 → 고른 값(행번호)이 selected에
+  row = risk_df.loc[selected]                                    # 그 번호의 행 전체를 꺼냄
+  st.write("신청자:", row["employee"])                           # row["컬럼"]으로 값 하나씩
+  ```
+  - **`st.selectbox("라벨", 선택지)`**: 화면에 드롭다운을 띄우고, 사용자가 **고른 값 하나**를 돌려준다. 여기선 선택지로 `risk_df.index`(위험 건들의 행번호 목록)를 줬으니 고른 번호가 `selected`에 들어옴.
+  - **`.loc[번호]`**: 그 번호 행을 **통째로** 꺼낸다. 결과는 한 줄(Series) → `row["employee"]`처럼 값 하나씩 꺼내 쓴다. (make_draft 안에서 row 쓰던 거랑 같음)
+  - `df.loc[selected]`도 `risk_df.loc[selected]`도 둘 다 동작 (index가 공유되므로). selected가 risk_df에서 나왔으니 `risk_df.loc`이 더 자연스러움.
+
+  **한 줄 정리**: selectbox=고른 값 돌려줌 / `.loc[번호]`=그 행 전체 / row["컬럼"]=값 하나. 관련: [[row-vs-df]]

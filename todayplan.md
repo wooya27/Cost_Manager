@@ -6,20 +6,7 @@
 
 ---
 
-## 블록 1 (30~40분) — Day9 fallback + `draft_source` · 🧠 직접 작성  👉 지금 이거
-> 템플릿이 "항상" 작동하는 게 핵심. LLM 실제 연결은 시간 남으면.
-- [ ] 모르는 `risk_type`도 기본 문구 나오는지 확인 (make_draft의 else 분기)
-- [ ] `draft_source = "template"` 값 생성 (나중 LLM과 구분용)
-- [ ] (여유 시) LLM 호출 붙이고 실패하면 try/except로 템플릿 fallback
-- 끝나면 보여야 할 결과: `draft_message` + `draft_source` 두 값이 항상 생성된다
-
-## 블록 2 (50분) — Day10 위험 건 상세 화면 · 🧠 직접 작성
-> 위험 건 하나 선택 → 사유/근거/초안 한 화면
-- [ ] `st.selectbox`로 위험 건 선택 → 선택한 행 가져오기
-- [ ] 신청자 / 금액 / 카테고리 / 위험유형·사유 / `policy_evidence` / `draft_message` 표시
-- 끝나면 보여야 할 결과: 위험 건 하나 고르면 사유+규정+초안이 한 화면에 뜬다 (디자인 X)
-
-## 블록 3 (40분) — Day10 검수 상태 (Human-in-the-loop) · 🧠 직접 작성
+## 블록 3 (40분) — Day10 검수 상태 (Human-in-the-loop) · 🧠 직접 작성  👉 다음 시작점
 > AI가 최종 승인 X, 사람이 마지막 확인
 - [ ] `review_status` 컬럼 추가 (기본값 `미검토`)
 - [ ] 상세 화면에서 상태 표시 (가능하면 미검토/보완요청/승인 선택 UI)
@@ -65,6 +52,9 @@
 
 ---
 ## 완료
+- [x] (9/15) 복습 세션 — 오늘 개념 3개(값2개 리턴·언패킹 / `for _, row`의 `_` / `st.selectbox`+`.loc`) 재학습 후 study/_recap-inbox.md에 Q&A 저장. `_`="안 쓸 거라 버림" 한 줄 기억으로 마무리
+- [x] (9/15) Day 10 블록1 — 위험 건 상세화면. `st.selectbox("...", risk_df.index)`로 위험 건 선택 → `risk_df.loc[selected]`로 그 행 전체 꺼내기 → `st.write`로 신청자/금액/카테고리/위험유형/사유/규정근거/초안 7개 표시. 배운 것: selectbox는 고른 값을 돌려줌, `.loc[번호]`는 그 행 전체, row["컬럼"]로 값 하나씩
+- [x] (9/15) Day 9 블록2 — `make_draft`가 `draft_message`+`draft_source` 2개 리턴(언패킹) + app.py에서 `df.iterrows()` for문으로 두 컬럼 생성. 배운 것: 함수 값 2개 리턴/받기(`return a,b` / `x,y=f()`), `for _, row in df.iterrows()`(인덱스 버리고 행 전체), 컬럼 붙이기는 for 밖에서 한 번만. LLM 실연결은 보류(템플릿 항상 작동이 핵심)
 - [x] (9/14) Day 9 블록1 — `make_draft(row)` 템플릿 초안 (값 꺼내기 → if-elif-else 유형별 분기 → f-string 조립 → return). else 덕에 매핑 안 된 유형도 문구 항상 생성. 배운 것: row(한 줄) vs df(표 전체), return은 계산 다 하고 맨 마지막
 - [x] (9/13) Day 8 블록3 — 검수용 요약 표(위험유형/사유/규정근거) + "규정 근거 확인 필요" 목록 화면 표시 · **Day8 완성**
 - [x] (9/13) Day 8 블록2 — 근거 안 붙는 3종 파악(전부 경우 A) + 사무용품·야근식대 매핑 보강(policy.txt 문단 + RISK_KEYWORDS). 이상 비용 후보는 의도적으로 "확인 필요" 유지(환각 방지)
