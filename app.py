@@ -56,19 +56,33 @@ if uploaded:
     # df.loc[df["has_receipt"]=="N","risk_reason"]="영수증 없음" #별도 데이터 변수를 만든 게 아니기 때문
     st.dataframe(df)
 
-    df["review_status"]= "미검토"
-
+    df["review_status"]= "미검토" #컬럼만들기 : df라는 표에 review_status라는 새로운 칸을 만들고, 처음에는 전부 "미검토"라고 적는다.
     
-
-
 
     # ── 블록3: 검수용 요약 표 (위험유형 / 사유 / 규정 근거를 한 화면에) ──
     risk_df = df[df["risk_type"].notna()]   # 위험이 잡힌 행만 골라내기 (risk_type이 비어있지 않은 행)
+
+    st.subheader("Dashboard")
+
+    total_count = df.shape[0]
+    risk_count = risk_df.shape[0]
+    total_amount = df["amount"].sum()
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("전체 신청 건수", df.shape[0])
+    col2.metric("위험 건수",risk_df.shape[0])
+    col3.metric("총 신청 금액", f"{ df["amount"].sum() }원")
+
+    # 기존 위험 건 표
+    st.subheader("검수 결과 (위험 건)")
+
     st.subheader("검수 결과 (위험 건)")
     st.dataframe(
         risk_df[["employee", "department", "category", "amount",
                  "risk_type", "risk_reason", "policy_evidence"]]
     )
+   
     st.subheader("위험 건 상세확인")
     selected = st.selectbox("확인할 위험 건을 선택",risk_df.index)
     row = risk_df.loc[selected]
@@ -80,7 +94,8 @@ if uploaded:
     st.write("위험 사유:", row["risk_reason"])
     st.write("규정 근거:", row["policy_evidence"])
     st.write("보완 요청 초안:", row["draft_message"])
-
+    st.write("검수상태:", row["review_status"]) #st.write() 화면에 보여주는것
+    
 
     # ── 규정 근거가 안 붙은 건 = 사람이 직접 확인해야 하는 목록 ──
     missing_policy = df[df["policy_evidence"] == "관련 규정 확인 필요"]  # 함수 반환값과 글자를 정확히 맞춰야 걸러짐

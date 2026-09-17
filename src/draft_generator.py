@@ -23,7 +23,7 @@ def make_draft(row):
         request = "해당 지출 건을 확인해 주세요."
 
     
-    draft_source = "template"
+    draft_source = "template" #이 초안은 어디에서 만들어졌는가?w
     draft_message = (
         f"{employee}님, "
         f"{amount:,}원 {category} 지출 건에 대해 확인이 필요합니다. "
