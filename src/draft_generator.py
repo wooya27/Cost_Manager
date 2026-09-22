@@ -2,8 +2,8 @@
 import streamlit as st
 import pandas as pd
 from src.audit_rules import detect_risks
-
-def make_draft(row):
+# DraftMessageAgent
+def make_draft(row):  # 그함수 안에서 붙인이름
     employee = row["employee"]
     amount = row["amount"]
     category = row["category"]

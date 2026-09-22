@@ -25,7 +25,7 @@ RISK_KEYWORDS = {
 }
 
 
-
+#PolicySearchAgent 
 def find_policy_evidence(risk_type,policy_messages): # 함수를 사용할때 값을 받아오는 입력칸
     # risk_type과 policy_messages는 이 함수를 만들면서 처음 등장해도 돼.
     risk_word =RISK_KEYWORDS.get(risk_type)

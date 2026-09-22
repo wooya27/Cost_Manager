@@ -15,6 +15,28 @@ uploaded = st.file_uploader("CSV 올리기", type="csv")
 
 if uploaded:
     df = pd.read_csv(uploaded)
+
+      # ── Day12: 입력 검증 ──
+    required_columns = [
+        "employee",
+        "department",
+        "category",
+        "amount",
+        "date",
+        "vendor",
+        "reason",
+        "has_receipt"
+    ]
+
+    missing_columns = [
+        col for col in required_columns
+        if col not in df.columns
+    ]
+
+    if missing_columns: #필요한 컬럼을 하나씩 확인해서, df에 없는 컬럼만 missing_columns에 모아라.
+        st.error(f"필수 컬럼이 없습니다: {missing_columns}")
+        st.stop()
+
     st.dataframe(df) #실제 데이터 전체 보기  -->이한줄이 15개 행을 전부 표로 보여줌
     st.write("행",df.shape[0])
     st.write("열",df.shape[1])
@@ -22,7 +44,7 @@ if uploaded:
 
     st.write("결측치",df.isna().sum())
 
- 
+  
 
     all_amount = df["amount"].sum()
     st.write("총 신청금액",all_amount)
@@ -35,12 +57,15 @@ if uploaded:
     # from src.audit_rules import detect_risks 
     # risk_type : 어떤 위험인지 ,policy_messages : 검색할 규정 문서들 
     df = detect_risks(df) # detect_risks(df)가 risk_type컬럼을 만들어내는 함수다.
+
+   # ── PolicySearchAgent: 위험 유형에 맞는 규정 근거 검색 ──
     risk_explanation = []
     for rt in df["risk_type"]:
         ev = find_policy_evidence(rt, policy_messages)   # rt(한 행의 위험유형 값)를 넣고, 결과는 ev에
         risk_explanation.append(ev)             # append는 한 개만: ev  append:ev에 들어 있는 값을 리스트 맨 뒤에 하나 추가하는 것이야.
     df["policy_evidence"] = risk_explanation    # for 밖! 다 모은 뒤 컬럼으로
 
+    # ── DraftMessageAgent: 규정 근거를 바탕으로 보완 요청 초안 생성 ──
     draft_messages = []
     draft_sources = []
     for _, row in df.iterrows():
@@ -56,6 +81,7 @@ if uploaded:
     # df.loc[df["has_receipt"]=="N","risk_reason"]="영수증 없음" #별도 데이터 변수를 만든 게 아니기 때문
     st.dataframe(df)
 
+   # ── ReviewSupportAgent: 사람이 AI 결과를 최종 검수할 수 있도록 상태 관리 ──
     df["review_status"]= "미검토" #컬럼만들기 : df라는 표에 review_status라는 새로운 칸을 만들고, 처음에는 전부 "미검토"라고 적는다.
     
 
@@ -64,19 +90,18 @@ if uploaded:
 
     st.subheader("Dashboard")
 
+    #dashboard 변수 만들어놓고 다시 계산하고있어
     total_count = df.shape[0]
     risk_count = risk_df.shape[0]
     total_amount = df["amount"].sum()
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("전체 신청 건수", df.shape[0])
-    col2.metric("위험 건수",risk_df.shape[0])
-    col3.metric("총 신청 금액", f"{ df["amount"].sum() }원")
+    col1.metric("전체 신청 건수", total_count)
+    col2.metric("위험 건수",risk_count)
+    col3.metric("총 신청 금액", f"{total_amount}원")
 
     # 기존 위험 건 표
-    st.subheader("검수 결과 (위험 건)")
-
     st.subheader("검수 결과 (위험 건)")
     st.dataframe(
         risk_df[["employee", "department", "category", "amount",
@@ -107,6 +132,18 @@ if uploaded:
         missing_policy[["employee", "category", "amount", "risk_type", "policy_evidence"]]
     )
 
+    # Day12 블록1: 검수 결과 CSV 다운로드
+    st.subheader("검수 결과 다운로드")
+
+    csv_data = df.to_csv(index=False)
+    st. download_button(
+         label= "검수 결과 csv다운로드",
+         data = csv_data, #중간결과
+         file_name = "auditflow_review_result.csv",
+         mime="text/csv" #이 파일은 CSV 형식의 텍스트 파일입니다.
+
+    )
+    
 
 
 

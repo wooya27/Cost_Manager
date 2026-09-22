@@ -1,0 +1,1 @@
+{"timestamp": "2026-09-22T23:44:30.777633", "risk_type": "영수증누락", "risk_reason": "영수증 없음", "has_policy_evidence": true, "draft_message": "김민수님, 50,000원 식대 지출 건에 대해 확인이 필요합니다. 영수증을 첨부해 주세요.", "draft_source": "template", "llm_success": null, "fallback_used": false, "error_message": null}
