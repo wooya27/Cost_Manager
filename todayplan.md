@@ -7,16 +7,7 @@
 
 ---
 
-## 블록 5 (30~35분) — Day14 로컬 로그(JSONL) · 🧠 직접 작성  👉 지금 이거
-- [ ] `src/observability.py` + `logs/` 폴더
-- [ ] 로그 함수 (timestamp, risk_type, draft_source, fallback_used 등)
-- [ ] 성공/실패/fallback 기록
-- 끝나면 보여야 할 결과: `logs/llm_calls.jsonl`에 로그 최소 1줄 존재
-
-## 블록 6 (40~60분) — Day14 README + 전체 점검 · 🔧 문서/세팅
-- [ ] README 최소 구조 채우기 (소개/문제/흐름/기능/기술스택/Agent구조/실행법/한계)
-- [ ] 전체 앱 한 번 처음부터 돌려보며 점검
-- 끝나면 보여야 할 결과: GitHub에서 처음 보는 사람도 이해할 수 있는 상태
+> ✅ **DAY2 완성 — MVP 완성됨** (블록1~6 전부 완료, 2026-09-25 정리)
 
 ---
 
@@ -30,6 +21,8 @@ CSV 다운로드 → workflow 1건 → 로컬 로그 → README. (줄여도 됨:
 
 ---
 ## 완료
+- [x] (9/25) 블록6 — Day14 README 완성. 12개 섹션 전부 채움(소개/문제/흐름/기능9개/Agent구조/Workflow/프로젝트구조/기술스택/안전설계/실행법/한계/향후확장)
+- [x] (9/25) 블록5 — Day14 로컬 로그. `src/observability.py` + `logs/llm_calls.jsonl`에 실행 로그 1줄 기록(timestamp/risk_type/draft_source/fallback_used 등)
 - [x] (9/22) 블록4 — Day13 위험 1건 workflow 실행. `run_workflow(state)`로 node 3개 `state=노드(state)` 체이닝 → 최종 state에 policy_evidence+draft_message 나옴 (`python -m src.agent_workflow`로 확인)
 - [x] (9/22) 블록3 — Day13 State+Node. State=결과 쌓는 가방(dict), Node=일 하나씩 하는 함수. node 3개(check_risk/policy_search/draft_message) + state 입출력 구조
 - [x] (9/22) 블록2 — Day12 입력 검증. 필수 컬럼 목록 → 리스트 컴프리헨션으로 빠진 컬럼만 모으기 → `st.error` + `st.stop()`으로 앱 안 죽게
