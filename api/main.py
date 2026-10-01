@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 from fastapi import FastAPI # FastAPI라는 도구를 갖고온다
 from pydantic import BaseModel #들어오는ㄴ 데이터의 규격을 정의하고 검사하기 위한 BaseModel을 갖고온다
@@ -46,3 +47,29 @@ def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 �
 
 
 
+=======
+from fastapi import FastAPI
+
+# FastAPI 애플리케이션 객체
+# 다른 프로그램이 AuditFlow 기능을 호출할 수 있는 "API 입구" 역할
+app = FastAPI(
+    title="AuditFlow AI API",
+    description="비용정산 1차 검수 기능을 제공하는 API",
+    version="0.1.0",
+)
+
+
+@app.get("/")
+def root():
+    """서버가 정상 실행 중인지 가장 간단히 확인하는 엔드포인트."""
+    return {
+        "service": "AuditFlow AI",
+        "status": "running",
+    }
+
+
+@app.get("/health")
+def health():
+    """운영 환경에서 서버 생존 여부를 확인하기 위한 헬스 체크."""
+    return {"status": "ok"}
+>>>>>>> d5edb12b7ca5af9bd3c480b10ff2a23239af4512
