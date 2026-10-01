@@ -1,41 +1,20 @@
-# 오늘 할 일 (9/22 화) — DAY2 시작 (Day12~14)
+# 오늘 할 일 (10/1 수) — AuditFlow 4일 플랜 Day1 시작
 
-> 기준 로드맵: **`AuditFlow_AI_Day9-14_2일_마무리플랜.md`** DAY2
-> DAY1(Day9~11) 완성됨: 초안 생성 → 사람 검수 화면 → Dashboard.
-> 오늘 블록은 다 적어뒀다. 순서대로 위에서부터. **지금 집중은 👉 1개만.** 나머지는 그거 끝나고 보면 돼.
-> **세션 사이 10분 휴식.** 에러는 15분 넘게 막히면 나한테 질문.
-
----
-
-> ✅ **DAY2 완성 — MVP 완성됨** (블록1~6 전부 완료, 2026-09-25 정리)
-
----
+> 기준 로드맵: **`.claude/plans/AuditFlow_AI_4일_집중_구현_플랜.md`** Day 1
+> 오늘 범위: Day1 Block 1~3 (코드이해 → FastAPI 띄우기 → 기존 함수 연결)
+> **지금 집중은 👉 1개만.** 세션 사이 10분 휴식. 에러 15분 넘게 막히면 질문.
 
 ## 오늘 목표선
-- **최소선:** 블록1 = CSV 다운로드 → 오늘 성공 (업무 산출물 확보)
-- **목표:** 블록1~4 = 다운로드 + 검증 + Workflow 1건
-- **욕심선:** 블록5~6 = 로그 + README = **DAY2 완성 → 프로젝트 MVP 완성**
-
-## 시간 부족 시 무조건 완료 (마무리플랜 기준)
-CSV 다운로드 → workflow 1건 → 로컬 로그 → README. (줄여도 됨: LLM 실제 연결, 실제 LangGraph, 실제 Langfuse, 차트)
+- **최소선:** Block 1~2 = 기존 흐름 설명 + FastAPI `/docs` 뜨기
+- **목표:** Block 3 = `/audit`에 기존 함수(detect_risks/find_policy_evidence/make_draft) 연결
+- (Day1 나머지 Block4~6=LLM+fallback, Day2 전체는 내일)
 
 ---
 ## 완료
-- [x] (9/25) 블록6 — Day14 README 완성. 12개 섹션 전부 채움(소개/문제/흐름/기능9개/Agent구조/Workflow/프로젝트구조/기술스택/안전설계/실행법/한계/향후확장)
-- [x] (9/25) 블록5 — Day14 로컬 로그. `src/observability.py` + `logs/llm_calls.jsonl`에 실행 로그 1줄 기록(timestamp/risk_type/draft_source/fallback_used 등)
-- [x] (9/22) 블록4 — Day13 위험 1건 workflow 실행. `run_workflow(state)`로 node 3개 `state=노드(state)` 체이닝 → 최종 state에 policy_evidence+draft_message 나옴 (`python -m src.agent_workflow`로 확인)
-- [x] (9/22) 블록3 — Day13 State+Node. State=결과 쌓는 가방(dict), Node=일 하나씩 하는 함수. node 3개(check_risk/policy_search/draft_message) + state 입출력 구조
-- [x] (9/22) 블록2 — Day12 입력 검증. 필수 컬럼 목록 → 리스트 컴프리헨션으로 빠진 컬럼만 모으기 → `st.error` + `st.stop()`으로 앱 안 죽게
-- [x] (9/22) 블록1 — Day12 검수 결과 CSV 다운로드. `df.to_csv(index=False)` → `st.download_button`(data/file_name/mime)
-- [x] (9/17) **DAY1 완성** — Day11 블록3 Agent 역할 정리(말로). 위험탐지→AuditRule / 규정검색→PolicySearch / 초안→DraftMessage / 사람검수→ReviewSupport
-- [x] (9/17) Day 11 블록2 — Dashboard 숫자 카드 3개(`st.metric`: 전체/위험/총액), `st.columns(3)` 배치
-- [x] (9/17) Day 10 블록4 — 검수 상태(`review_status`) 상세 화면 표시. 배움: 변수는 태어난 줄보다 아래에서만 사용 가능(NameError)
-- [x] (9/16) Day 10 블록3 — 위험 건 상세 화면. `st.selectbox` → `.loc`로 행 전체 표시
-- [x] (9/15) Day 9 블록2 — `make_draft`가 draft_message+draft_source 2개 리턴(언패킹) + `df.iterrows()`
-- [x] (9/14) Day 9 블록1 — `make_draft(row)` 템플릿 초안 (값 꺼내기 → if-elif-else → f-string → return)
-- [x] (9/13) Day 8 완성 — 검수용 요약 표 + "규정 근거 확인 필요" 목록
-- [x] (9/11) Day 7 완성 — 위험유형→키워드→규정 chunk 검색 + 실패 기본값
-- [x] (9/8) Day 6 — policy.txt 규정 문서 + 문단 분리
-- [x] (9/6) Day 5 완성 — 7종 위험 탐지
-- [x] (8/18) Day 3~4 — 위험 컬럼 + 규칙 함수 분리
-- [x] (8/15) Day 1~2 — Streamlit 화면 + CSV 업로드 + 데이터 요약
+- [x] (10/1) Day1 블록1 — 기존 3함수 흐름 안 보고 설명. detect_risks=전체 df 받아 위험행에 risk_type/risk_reason 채워 df 반환 / find_policy_evidence(risk_type, policy_messages)=규정문단 반환, 못찾으면 "관련 규정 확인 필요" / make_draft(row)=draft_message+draft_source **2개** 리턴(출처 꼬리표가 fallback 핵심)
+
+## 완료 (이어서)
+- [x] (10/1) Day1 블록2 — FastAPI `api/main.py`: `GET /`(상태확인) + `POST /audit`. Pydantic `ExpenseRequest` 모델로 입력 규격 검사(reason만 Optional). `uvicorn api.main:app --reload` → `/docs`에서 echo 응답 확인
+
+## 진행 중 / 다음
+- [ ] Day1 블록3 — `/audit` 안에서 기존 3함수 호출 연결: 입력 1건→DataFrame→detect_risks→find_policy_evidence→make_draft→결과 JSON (Streamlit 로직과 중복 안 되게)
