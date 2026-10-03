@@ -1,8 +1,9 @@
 # 보완 요청 문장을 만든다
-import streamlit as st
-import pandas as pd
-from src.audit_rules import detect_risks
+# import streamlit as st
+# import pandas as pd
+# from src.audit_rules import detect_risks
 # DraftMessageAgent
+
 def make_draft(row):  # 그함수 안에서 붙인이름
     employee = row["employee"]
     amount = row["amount"]

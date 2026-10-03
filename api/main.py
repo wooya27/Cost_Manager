@@ -1,7 +1,12 @@
-<<<<<<< HEAD
+
 
 from fastapi import FastAPI # FastAPI라는 도구를 갖고온다
 from pydantic import BaseModel #들어오는ㄴ 데이터의 규격을 정의하고 검사하기 위한 BaseModel을 갖고온다
+import pandas as pd # → 비용 한 건을 DataFrame으로 만들기 #pandas를 가져오고,앞으로 pd fkrh qnfmrpTek
+from src.audit_rules import detect_risks #→ 네가 기존에 만든 위험 탐지 함수 가져오기
+from src.policy_retriever import find_policy_evidence, policy_messages #규정 검색 함수와 검색할 규정 문단 목록
+from src.draft_generator import make_draft #보완요청 초안 생성 함수
+from src.llm_generator import make_llm_draft
 app = FastAPI() # app이라는 변수에 FastAPI 서버하나를 만든다
 
 # AuditFlow가 받을 비용 데이터의 양식을 만든다.
@@ -28,48 +33,68 @@ def root():
 def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 아직안함. 입력->받고=확인->다시 보냄
 
 
-          # 1. 비용 데이터를 DataFrame으로 바꾸고
+    # 1. Pydantic 객체 → 일반 Python 딕셔너리
+    expense_dict = expense.model_dump()
 
-            # 2. 위험 탐지하고
+    # 2. 딕셔너리 데이터 1건 → DataFrame 1행
+    df = pd.DataFrame([expense_dict]) #이 딕셔너리 1개를 표의 1행으로 넣어라”
 
-            # 3. 규정 찾고
+    # 3. 기존 위험 탐지 함수에 전달
+    df = detect_risks(df)
 
-            # 4. 초안 만들고
+    # 4. 검사된 DataFrame의 첫 번째 행 꺼내기
+    result = df.iloc[0]
 
-            # 5. 결과를 돌려준다
+    # 5. 위험탐지 다음에 규정 검색 추가
+    risk_type = result.get("risk_type")
 
+    if pd.isna(risk_type):
+        policy_evidence = None
+    else:
+        policy_evidence = find_policy_evidence(
+            risk_type,
+            policy_messages
+        )
 
-
+    # 6.보완요청 초안 생성 함수    
+    if pd.isna(risk_type):
+        draft_message = None
+        draft_source = None
+    else:
+        draft_message, draft_source = make_draft(result)
+    # 7. API 결과로 돌려주기
+    # 검사가 끝난 result에서 필요한 값만 골라서 API 응답용 JSON으로 만드는 부분
+    # “검사 결과에서 직원명, 카테고리, 금액, 위험유형, 위험사유를 꺼내서 사용자에게 돌려줘.”
     return {
-        "message": "비용 데이터를 정상적으로 받았습니다.",
-        "expense": expense
+        "employee": result["employee"], #result의 employee
+        "category": result["category"], #result의 category
+        "amount": int(result["amount"]), # result 의 amount
+        "risk_type": None if pd.isna(result.get("risk_type")) else result.get("risk_type"),
+        "risk_reason": None if pd.isna(result.get("risk_reason")) else result.get("risk_reason"),
+        "policy_evidence": policy_evidence,
+        "draft_message": draft_message,
+        "draft_source": draft_source
+
     }
 
 
 
-=======
-from fastapi import FastAPI
 
-# FastAPI 애플리케이션 객체
-# 다른 프로그램이 AuditFlow 기능을 호출할 수 있는 "API 입구" 역할
-app = FastAPI(
-    title="AuditFlow AI API",
-    description="비용정산 1차 검수 기능을 제공하는 API",
-    version="0.1.0",
-)
+# JSON
+# ↓
+# Pydantic 검사
+# ↓
+# expense
+# ↓
+# 딕셔너리
+# ↓
+# DataFrame 1행
+# ↓
+# detect_risks()
+# ↓
+# result = 검사 결과 한 행
+# ↓
+# return
+# ↓
+# FastAPI가 JSON 응답으로 변환
 
-
-@app.get("/")
-def root():
-    """서버가 정상 실행 중인지 가장 간단히 확인하는 엔드포인트."""
-    return {
-        "service": "AuditFlow AI",
-        "status": "running",
-    }
-
-
-@app.get("/health")
-def health():
-    """운영 환경에서 서버 생존 여부를 확인하기 위한 헬스 체크."""
-    return {"status": "ok"}
->>>>>>> d5edb12b7ca5af9bd3c480b10ff2a23239af4512

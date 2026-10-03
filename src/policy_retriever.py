@@ -1,8 +1,8 @@
 # 관련 규정을 찾는다
 
-import streamlit as st
-import pandas as pd
-from src.audit_rules import detect_risks
+# import streamlit as st
+# import pandas as pd
+# from src.audit_rules import detect_risks
 
 
 with open("policy.txt","r",encoding="utf-8")as f:  #열기
@@ -10,10 +10,10 @@ with open("policy.txt","r",encoding="utf-8")as f:  #열기
 
     policy_txt = f.read() #읽기
     policy_messages = policy_txt.split("\n\n") #자르기
-    st.write("조각 개수:",len(policy_messages))  
-for policy_message in policy_messages:
-    #st.write(policy_message)
-    print(policy_message)
+    # st.write("조각 개수:",len(policy_messages))  
+# for policy_message in policy_messages:
+#     #st.write(policy_message)
+#     print(policy_message)
 
 RISK_KEYWORDS = {
     "식대한도 초과" : "식대",
