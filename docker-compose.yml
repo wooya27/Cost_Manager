@@ -1,0 +1,20 @@
+#Docker에게 “PostgreSQL을 이런 설정으로 실행해줘”라고 적어놓는 실행 설명서야.
+
+services:
+  db:
+    image: pgvector/pgvector:pg18
+    container_name: auditflow_db
+
+    environment:
+      POSTGRES_USER: audituser
+      POSTGRES_PASSWORD: auditpass
+      POSTGRES_DB: auditflow
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - auditflow_data:/var/lib/postgresql/data
+
+volumes:
+  auditflow_data:
