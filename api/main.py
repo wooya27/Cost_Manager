@@ -61,7 +61,18 @@ def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 �
         draft_message = None
         draft_source = None
     else:
-        draft_message, draft_source = make_draft(result)
+        try:
+            #Gemini에게 초안을 만들어달라고 요청한다.
+            draft_message, draft_source = make_llm_draft(
+                result,
+                policy_evidence
+            )
+            #[Fallback]
+        # 위에서 오류가 발생했다면 이쪽으로 와라.
+        # Gemini 대신 기존 템플릿 초안 생성기를 사용해라.
+        except Exception:
+            draft_message, draft_source = make_draft(result)
+
     # 7. API 결과로 돌려주기
     # 검사가 끝난 result에서 필요한 값만 골라서 API 응답용 JSON으로 만드는 부분
     # “검사 결과에서 직원명, 카테고리, 금액, 위험유형, 위험사유를 꺼내서 사용자에게 돌려줘.”

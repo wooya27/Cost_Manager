@@ -2,8 +2,9 @@
 
 def detect_risks(df): #AuditRullAgent
     # df.loc[조건, "risk_type"] = "..." 이게 무슨 뜻이냐면:
-    # 조건에 맞는 행의 risk_type 칸에 그 위험 이름을 써넣어라
-    no_receipt = df[df["has_receipt"]=="N"]
+    # “이 비용 데이터를 여러 위험 규칙으로 검사해서, 문제가 있으면 어떤 위험인지 표시해라.”
+    #     no_receipt = df[df["has_receipt"]=="N"]
+    #위험탐지 = 조건 검사 + 위험 종류 판정 + 결과 기록
 
     df.loc[df["has_receipt"]=="N","risk_type"]="영수증누락"
     df.loc[df["has_receipt"]=="N","risk_reason"]="영수증 없음" #별도 데이터 변수를 만든 게 아니기 때문
