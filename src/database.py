@@ -1,20 +1,23 @@
 import os
-import psycopg 
+import psycopg
 from dotenv import load_dotenv
 
 load_dotenv()
-#database 주소값 가져와
+
+# database 주소값 가져오기
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 def get_connection():
-    return psycopg.connect(DATABASE_URL)# DATABASE_URL로 PostgreSQL 접속.” /문열고 들어가기
+    return psycopg.connect(DATABASE_URL)
 
-def create_tables(): # 표자체 만들기
+
+def create_tables():
     conn = get_connection()
 
     with conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TABLE IF NOT EXISTS audit_results (
                 id SERIAL PRIMARY KEY,
                 employee TEXT NOT NULL,
@@ -29,9 +32,15 @@ def create_tables(): # 표자체 만들기
                 review_status TEXT DEFAULT 'unreviewed',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-        """)
+            """
+        )
 
-    def save_audit_result(employee,
+    conn.commit()
+    conn.close()
+
+
+def save_audit_result(
+    employee,
     department,
     category,
     amount,
@@ -40,14 +49,13 @@ def create_tables(): # 표자체 만들기
     policy_evidence,
     draft_message,
     draft_source
-    ): # 장부에 실제 1결과 저장하기
-
-     conn = get_connection() # DB실행
+):
+    conn = get_connection()
 
     with conn.cursor() as cur:
-        cur.execute( # audit_results 표에 한 줄 추가
+        cur.execute(
             """
-            INSERT INTO audit_results ( 
+            INSERT INTO audit_results (
                 employee,
                 department,
                 category,
@@ -58,10 +66,9 @@ def create_tables(): # 표자체 만들기
                 draft_message,
                 draft_source
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)   
-            RETURNING id; #
-            """,# VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)   : 실제값 넣기
-                #RETURNING id;: 방금 저장된 행 번호 알려줘
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id;
+            """,
             (
                 employee,
                 department,
@@ -75,9 +82,39 @@ def create_tables(): # 표자체 만들기
             )
         )
 
-        new_id = cur.fetchone()[0] #→ 그 번호 꺼내기
+        new_id = cur.fetchone()[0]
 
-        conn.commit() #→ 저장 확정
-        conn.close()
+    conn.commit()
+    conn.close()
 
-        return new_id # → id를 FastAPI 쪽으로 돌려주기
+    return new_id
+
+def get_audit_results():
+    conn = get_connection()
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                id,
+                employee,
+                department,
+                category,
+                amount,
+                risk_type,
+                risk_reason,
+                policy_evidence,
+                draft_message,
+                draft_source,
+                review_status,
+                created_at
+            FROM audit_results
+            ORDER BY id DESC;
+            """
+        )
+
+        rows = cur.fetchall()
+
+    conn.close()
+
+    return rows

@@ -7,6 +7,8 @@ from src.audit_rules import detect_risks #→ 네가 기존에 만든 위험 탐
 from src.policy_retriever import find_policy_evidence, policy_messages #규정 검색 함수와 검색할 규정 문단 목록
 from src.draft_generator import make_draft #보완요청 초안 생성 함수
 from src.llm_generator import make_llm_draft
+from src.database import save_audit_result, get_audit_results
+
 app = FastAPI() # app이라는 변수에 FastAPI 서버하나를 만든다
 
 # AuditFlow가 받을 비용 데이터의 양식을 만든다.
@@ -25,7 +27,13 @@ class ExpenseRequest(BaseModel): # 컬럼양식
 def root():
     return{"status": "running"}
 
+@app.get("/audit-results")
+def read_audit_results():
+    rows = get_audit_results()
 
+    return {
+        "results": rows
+    }
 
 @app.post("/audit") # 누군가 /audit 주소로 POST 요청을 보내면 아래 함수를 실행해라.
                     # 들어온 비용 데이터를 expense라는 이름으로 받아라.+ 단, 데이터 형식은 ExpenseRequest 규칙을 따라야 한다.
@@ -72,11 +80,32 @@ def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 �
         # Gemini 대신 기존 템플릿 초안 생성기를 사용해라.
         except Exception:
             draft_message, draft_source = make_draft(result)
+    # 검사가 끝난 결과를 save_audit_result()전달하고 PostgreSQL에 저장한뒤 DB가 만든 id를 audit_id로 받아라
+    risk_type_value = (
+    None if pd.isna(result.get("risk_type"))
+    else result.get("risk_type")
+    )
 
+    risk_reason_value = (
+        None if pd.isna(result.get("risk_reason"))
+        else result.get("risk_reason")
+    )
+    audit_id = save_audit_result(
+        employee=result["employee"],
+        department=result["department"],
+        category=result["category"],
+        amount=int(result["amount"]),
+        risk_type=risk_type_value,
+        risk_reason=risk_reason_value,
+        policy_evidence=policy_evidence,
+        draft_message=draft_message,
+        draft_source=draft_source
+    )
     # 7. API 결과로 돌려주기
     # 검사가 끝난 result에서 필요한 값만 골라서 API 응답용 JSON으로 만드는 부분
     # “검사 결과에서 직원명, 카테고리, 금액, 위험유형, 위험사유를 꺼내서 사용자에게 돌려줘.”
     return {
+        "id": audit_id,
         "employee": result["employee"], #result의 employee
         "category": result["category"], #result의 category
         "amount": int(result["amount"]), # result 의 amount
