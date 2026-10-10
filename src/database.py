@@ -118,3 +118,27 @@ def get_audit_results():
     conn.close()
 
     return rows
+
+def update_review_status(audit_id, review_status):
+    conn = get_connection()
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE audit_results
+            SET review_status = %s
+            WHERE id = %s
+            RETURNING id;
+            """,
+            (
+                review_status,
+                audit_id
+            )
+        )
+
+        row = cur.fetchone()
+
+    conn.commit()
+    conn.close()
+
+    return row
