@@ -1,7 +1,7 @@
 import os
 import psycopg
 from dotenv import load_dotenv
-
+from psycopg.types.json import Jsonb
 load_dotenv()
 
 # database 주소값 가져오기
@@ -34,6 +34,10 @@ def create_tables():
             );
             """
         )
+        cur.execute("""
+            ALTER TABLE audit_results
+            ADD COLUMN IF NOT EXISTS risks JSONB DEFAULT '[]'::jsonb;
+                """)
 
     conn.commit()
     conn.close()
@@ -44,6 +48,7 @@ def save_audit_result(
     department,
     category,
     amount,
+    risks,
     risk_type,
     risk_reason,
     policy_evidence,
@@ -60,13 +65,14 @@ def save_audit_result(
                 department,
                 category,
                 amount,
+                risks,
                 risk_type,
                 risk_reason,
                 policy_evidence,
                 draft_message,
                 draft_source
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s,%s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
             """,
             (
@@ -74,6 +80,7 @@ def save_audit_result(
                 department,
                 category,
                 amount,
+                Jsonb(risks or []),
                 risk_type,
                 risk_reason,
                 policy_evidence,
@@ -101,6 +108,7 @@ def get_audit_results():
                 department,
                 category,
                 amount,
+                risks,
                 risk_type,
                 risk_reason,
                 policy_evidence,

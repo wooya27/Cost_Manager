@@ -54,69 +54,83 @@ def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 �
     # 4. 검사된 DataFrame의 첫 번째 행 꺼내기
     result = df.iloc[0]
 
-    # 5. 위험탐지 다음에 규정 검색 추가
-    risk_type = result.get("risk_type")
+    # 5. Block4에서 만든 여러 위험 가져오기
+    risks = result["risks"]
 
-    if pd.isna(risk_type):
+
+    # 위험이 하나도 없는 경우
+    if not risks:
+        risk_type = None
+        risk_reason = None
         policy_evidence = None
+        draft_message = None
+        draft_source = None
+
+
+    # 위험이 있는 경우
     else:
+        # 여러 위험 중 첫 번째 위험을 꺼낸다.
+        first_risk = risks[0]
+
+        risk_type = first_risk["risk_type"]
+        risk_reason = first_risk["risk_reason"]
+
+
+        # 첫 번째 위험에 맞는 규정 검색
         policy_evidence = find_policy_evidence(
             risk_type,
             policy_messages
         )
 
-    # 6.보완요청 초안 생성 함수    
-    if pd.isna(risk_type):
-        draft_message = None
-        draft_source = None
-    else:
+
+        # 기존 LLM 함수는 아직 risk_type/risk_reason을 찾기 때문에
+        # result 복사본에 첫 번째 위험 정보를 넣어준다.
+        result_for_draft = result.copy()
+
+        result_for_draft["risk_type"] = risk_type
+        result_for_draft["risk_reason"] = risk_reason
+
+
+        # 보완 요청 초안 생성
         try:
-            #Gemini에게 초안을 만들어달라고 요청한다.
             draft_message, draft_source = make_llm_draft(
-                result,
+                result_for_draft,
                 policy_evidence
             )
-            #[Fallback]
-        # 위에서 오류가 발생했다면 이쪽으로 와라.
-        # Gemini 대신 기존 템플릿 초안 생성기를 사용해라.
-        except Exception:
-            draft_message, draft_source = make_draft(result)
-    # 검사가 끝난 결과를 save_audit_result()전달하고 PostgreSQL에 저장한뒤 DB가 만든 id를 audit_id로 받아라
-    risk_type_value = (
-    None if pd.isna(result.get("risk_type"))
-    else result.get("risk_type")
-    )
 
-    risk_reason_value = (
-        None if pd.isna(result.get("risk_reason"))
-        else result.get("risk_reason")
-    )
+        except Exception:
+            draft_message, draft_source = make_draft(
+                result_for_draft
+            )
+
+
+    # 6. PostgreSQL 저장  DB저장
     audit_id = save_audit_result(
         employee=result["employee"],
         department=result["department"],
         category=result["category"],
         amount=int(result["amount"]),
-        risk_type=risk_type_value,
-        risk_reason=risk_reason_value,
+        risks=risks,
+        risk_type=risk_type,
+        risk_reason=risk_reason,
         policy_evidence=policy_evidence,
         draft_message=draft_message,
         draft_source=draft_source
     )
 
-    # 7. API 결과로 돌려주기
-    # 검사가 끝난 result에서 필요한 값만 골라서 API 응답용 JSON으로 만드는 부분
-    # “검사 결과에서 직원명, 카테고리, 금액, 위험유형, 위험사유를 꺼내서 사용자에게 돌려줘.”
+
+    # 7. API 결과 반환
     return {
         "id": audit_id,
-        "employee": result["employee"], #result의 employee
-        "category": result["category"], #result의 category
-        "amount": int(result["amount"]), # result 의 amount
-        "risk_type": None if pd.isna(result.get("risk_type")) else result.get("risk_type"),
-        "risk_reason": None if pd.isna(result.get("risk_reason")) else result.get("risk_reason"),
+        "employee": result["employee"],
+        "category": result["category"],
+        "amount": int(result["amount"]),
+        "risks": risks,
+        "risk_type": risk_type,
+        "risk_reason": risk_reason,
         "policy_evidence": policy_evidence,
         "draft_message": draft_message,
         "draft_source": draft_source
-
     }
 
 @app.get("/audit-results")
