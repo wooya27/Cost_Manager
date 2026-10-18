@@ -30,7 +30,8 @@ def create_tables():
                 draft_message TEXT,
                 draft_source TEXT,
                 review_status TEXT DEFAULT 'unreviewed',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                risks JSONB DEFAULT '[]'::jsonb
             );
             """
         )
