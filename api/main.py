@@ -31,6 +31,9 @@ class ExpenseRequest(BaseModel): # 컬럼양식
     reason: str | None = None # reason은 글자일 수도 있고, 비어 있을 수도 있다.
     has_receipt: str
 
+class BatchAuditRequest(BaseModel):
+    expenses: list[ExpenseRequest]
+
 # 누군가 서버의 / 주소를 조회하면 root()를 실행해서 "running"이라는 결과를 돌려준다
 @app.get("/")
 def root():
@@ -39,24 +42,23 @@ def root():
 @app.post("/audit") # 누군가 /audit 주소로 POST 요청을 보내면 아래 함수를 실행해라.
                     # 들어온 비용 데이터를 expense라는 이름으로 받아라.+ 단, 데이터 형식은 ExpenseRequest 규칙을 따라야 한다.
                     #expense라는 데이터를 받을 건데, ExpenseRequest 형식이어야 해.
+                    
 def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 아직안함. 입력->받고=확인->다시 보냄
-
 
     # 1. Pydantic 객체 → 일반 Python 딕셔너리
     expense_dict = expense.model_dump()
 
     # 2. 딕셔너리 데이터 1건 → DataFrame 1행
-    df = pd.DataFrame([expense_dict]) #이 딕셔너리 1개를 표의 1행으로 넣어라”
+    df = pd.DataFrame([expense_dict])
 
-    # 3. 기존 위험 탐지 함수에 전달
+    # 3. audit_rules.py의 위험 탐지 함수 실행
     df = detect_risks(df)
 
-    # 4. 검사된 DataFrame의 첫 번째 행 꺼내기
+    # 4. 검사된 DataFrame의 첫 번째 행
     result = df.iloc[0]
 
     # 5. Block4에서 만든 여러 위험 가져오기
     risks = result["risks"]
-
 
     # 위험이 하나도 없는 경우
     if not risks:
@@ -69,7 +71,6 @@ def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 �
 
     # 위험이 있는 경우
     else:
-        # 여러 위험 중 첫 번째 위험을 꺼낸다.
         first_risk = risks[0]
 
         risk_type = first_risk["risk_type"]
@@ -103,7 +104,7 @@ def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 �
                 result_for_draft
             )
 
-
+    
     # 6. PostgreSQL 저장  DB저장
     audit_id = save_audit_result(
         employee=result["employee"],
@@ -133,7 +134,45 @@ def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 �
         "draft_source": draft_source
     }
 
-@app.get("/audit-results")
+@app.post("/audit/batch")
+def audit_expenses_batch(batch: BatchAuditRequest):
+
+    # 1. 여러 비용을 dict로 변환
+    expense_dicts = []
+
+    for expense in batch.expenses:
+        expense_dicts.append(expense.model_dump())
+
+    # 2. 여러 비용 → DataFrame 여러 행
+    df = pd.DataFrame(expense_dicts)
+
+    # 3. 여러 행을 한 번에 위험 검사
+    df = detect_risks(df)
+
+    # 4. 검사 결과 모으기
+    results = []
+
+    for _, row in df.iterrows():
+        results.append({
+            "employee": row["employee"],
+            "department": row["department"],
+            "category": row["category"],
+            "amount": int(row["amount"]),
+            "date": row["date"],
+            "vendor": row["vendor"],
+            "reason": None if pd.isna(row["reason"]) else row["reason"],
+            "has_receipt": row["has_receipt"],
+            "risks": row["risks"]
+        })
+
+    # 5. 결과 반환
+    return {
+        "count": len(results),
+        "results": results
+    }
+    
+
+@app.get("/audit-results") #저장된 검사 결과를 조회해라
 def read_audit_results():
     rows = get_audit_results()
 
