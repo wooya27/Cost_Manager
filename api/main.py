@@ -62,36 +62,51 @@ def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 �
 
     # 위험이 하나도 없는 경우
     if not risks:
-        risk_type = None
-        risk_reason = None
-        policy_evidence = None
-        draft_message = None
-        draft_source = None
+        processed_risks = []
 
-
-    # 위험이 있는 경우
     else:
-        first_risk = risks[0]
+        processed_risks = []
 
-        risk_type = first_risk["risk_type"]
-        risk_reason = first_risk["risk_reason"]
+    for risk in risks:
+        risk_type = risk["risk_type"]
+        risk_reason = risk["risk_reason"]
 
-
-        # 첫 번째 위험에 맞는 규정 검색
+        # Block 8 - 규정 찾기
         policy_evidence = find_policy_evidence(
             risk_type,
             policy_messages
         )
 
+        processed_risk = risk.copy()
+        processed_risk["policy_evidence"] = policy_evidence
 
-        # 기존 LLM 함수는 아직 risk_type/risk_reason을 찾기 때문에
-        # result 복사본에 첫 번째 위험 정보를 넣어준다.
+            # Block 9 - LLM 초안 만들기
         result_for_draft = result.copy()
-
         result_for_draft["risk_type"] = risk_type
         result_for_draft["risk_reason"] = risk_reason
 
+        try:
+            draft_message, draft_source = make_llm_draft(
+                result_for_draft,
+                policy_evidence
+            )
 
+        except Exception:
+            draft_message, draft_source = make_draft(
+                result_for_draft
+            )
+
+        processed_risk["draft_message"] = draft_message
+        processed_risk["draft_source"] = draft_source
+
+        processed_risks.append(processed_risk)
+
+        for item in processed_risks:
+            print("위험:", item["risk_type"])
+            print("규정:", item["policy_evidence"])
+            print("초안:", item["draft_message"])
+            print("출처:", item["draft_source"])
+            print("-----")
         # 보완 요청 초안 생성
         try:
             draft_message, draft_source = make_llm_draft(
