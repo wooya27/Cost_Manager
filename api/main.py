@@ -1,132 +1,284 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import pandas as pd
 
-
-from fastapi import FastAPI # FastAPI라는 도구를 갖고온다
-from pydantic import BaseModel #들어오는ㄴ 데이터의 규격을 정의하고 검사하기 위한 BaseModel을 갖고온다
-import pandas as pd # → 비용 한 건을 DataFrame으로 만들기 #pandas를 가져오고,앞으로 pd fkrh qnfmrpTek
-from src.audit_rules import detect_risks #→ 네가 기존에 만든 위험 탐지 함수 가져오기
-from src.policy_retriever import find_policy_evidence, policy_messages #규정 검색 함수와 검색할 규정 문단 목록
-from src.draft_generator import make_draft #보완요청 초안 생성 함수
+from src.audit_rules import detect_risks
+from src.policy_retriever import find_policy_evidence, policy_messages
+from src.draft_generator import make_draft
 from src.llm_generator import make_llm_draft
-from src.database import save_audit_result, get_audit_results, create_tables
+
+
+from src.database import (
+    save_audit_result,
+    get_audit_results,
+    create_tables,
+    update_review_status,
+)
+
 from contextlib import asynccontextmanager
 
+
+# =========================================================
+# 서버 시작 시 DB 테이블 준비
+# =========================================================
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("▶ create_tables() 실행 시작")
     create_tables()
     print("✅ create_tables() 실행 완료")
+
     yield
 
-app = FastAPI(lifespan=lifespan) # app이라는 변수에 FastAPI 서버하나를 만든다
 
-# AuditFlow가 받을 비용 데이터의 양식을 만든다.
-class ExpenseRequest(BaseModel): # 컬럼양식
+app = FastAPI(lifespan=lifespan)
+
+
+# =========================================================
+# Request 데이터 형식
+# =========================================================
+
+# 비용 1건의 입력 형식
+class ExpenseRequest(BaseModel):
     employee: str
     department: str
     category: str
     amount: int
     date: str
     vendor: str
-    reason: str | None = None # reason은 글자일 수도 있고, 비어 있을 수도 있다.
+    reason: str | None = None
     has_receipt: str
 
+
+# 여러 비용을 한 번에 받을 때의 입력 형식
 class BatchAuditRequest(BaseModel):
     expenses: list[ExpenseRequest]
 
-# 누군가 서버의 / 주소를 조회하면 root()를 실행해서 "running"이라는 결과를 돌려준다
+
+# Human Review 상태 변경용 입력 형식
+class ReviewRequest(BaseModel):
+    review_status: str
+
+
+# 사람이 변경할 수 있는 검수 상태
+ALLOWED_REVIEW_STATUSES = {
+    "unreviewed",
+    "approved",
+    "need_revision",
+    "rejected",
+}
+
+
+# =========================================================
+# 서버 상태 확인
+# =========================================================
+
 @app.get("/")
 def root():
-    return{"status": "running"}
+    return {
+        "status": "running"
+    }
 
-@app.post("/audit") # 누군가 /audit 주소로 POST 요청을 보내면 아래 함수를 실행해라.
-                    # 들어온 비용 데이터를 expense라는 이름으로 받아라.+ 단, 데이터 형식은 ExpenseRequest 규칙을 따라야 한다.
-                    #expense라는 데이터를 받을 건데, ExpenseRequest 형식이어야 해.
-                    
-def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 아직안함. 입력->받고=확인->다시 보냄
 
-    # 1. Pydantic 객체 → 일반 Python 딕셔너리
+# =========================================================
+# POST /audit
+# 비용 1건 검사
+# =========================================================
+
+@app.post("/audit")
+def audit_expense(expense: ExpenseRequest):
+
+    # -----------------------------------------------------
+    # 1. Pydantic 객체 → Python dict
+    # -----------------------------------------------------
+
     expense_dict = expense.model_dump()
 
-    # 2. 딕셔너리 데이터 1건 → DataFrame 1행
+
+    # -----------------------------------------------------
+    # 2. 비용 1건 → DataFrame 1행
+    # -----------------------------------------------------
+
     df = pd.DataFrame([expense_dict])
 
-    # 3. audit_rules.py의 위험 탐지 함수 실행
+
+    # -----------------------------------------------------
+    # 3. 위험 탐지
+    # -----------------------------------------------------
+
     df = detect_risks(df)
 
-    # 4. 검사된 DataFrame의 첫 번째 행
+
+    # -----------------------------------------------------
+    # 4. 검사된 첫 번째 행 가져오기
+    # -----------------------------------------------------
+
     result = df.iloc[0]
 
-    # 5. Block4에서 만든 여러 위험 가져오기
+
+    # -----------------------------------------------------
+    # 5. detect_risks()가 만든 여러 위험 가져오기
+    # -----------------------------------------------------
+
     risks = result["risks"]
 
-    # 위험이 하나도 없는 경우
-    if not risks:
-        processed_risks = []
 
-    else:
-        processed_risks = []
+    # 규정 검색 + 초안 생성까지 끝난
+    # 최종 위험들을 저장할 리스트
+    processed_risks = []
+
+
+    # -----------------------------------------------------
+    # 6. 위험을 하나씩 처리
+    # -----------------------------------------------------
 
     for risk in risks:
+
+        # 현재 처리 중인 위험
         risk_type = risk["risk_type"]
         risk_reason = risk["risk_reason"]
 
-        # Block 8 - 규정 찾기
+
+        # -------------------------------------------------
+        # 6-1. 현재 위험에 맞는 규정 검색
+        # -------------------------------------------------
+
         policy_evidence = find_policy_evidence(
             risk_type,
             policy_messages
         )
 
+
+        # 원본 risk를 복사해서
+        # 후속 처리 결과를 추가할 객체 생성
         processed_risk = risk.copy()
+
         processed_risk["policy_evidence"] = policy_evidence
 
-            # Block 9 - LLM 초안 만들기
+
+        # -------------------------------------------------
+        # 6-2. LLM / Template에 전달할 데이터 준비
+        # -------------------------------------------------
+
         result_for_draft = result.copy()
+
         result_for_draft["risk_type"] = risk_type
         result_for_draft["risk_reason"] = risk_reason
 
-        try:
-            draft_message, draft_source = make_llm_draft(
-                result_for_draft,
-                policy_evidence
-            )
 
-        except Exception:
-            draft_message, draft_source = make_draft(
-                result_for_draft
-            )
+        # -------------------------------------------------
+        # 6-3. Block 7 안전장치
+        #
+        # 규정 근거 없음
+        # → LLM 호출 금지
+        # → 사람이 확인하도록 needs_review
+        # -------------------------------------------------
+
+        if (
+            not policy_evidence
+            or policy_evidence == "관련 규정 확인 필요"
+        ):
+
+            draft_message = None
+            draft_source = "needs_review"
+
+
+        # -------------------------------------------------
+        # 규정 근거 있음
+        # → LLM 초안 생성
+        # -------------------------------------------------
+
+        else:
+
+            try:
+
+                draft_message, draft_source = make_llm_draft(
+                    result_for_draft,
+                    policy_evidence
+                )
+
+
+            # LLM 실패
+            # → Template Fallback
+            except Exception:
+
+                draft_message, draft_source = make_draft(
+                    result_for_draft
+                )
+
+
+        # -------------------------------------------------
+        # 6-4. 현재 위험에 후속 결과 붙이기
+        # -------------------------------------------------
 
         processed_risk["draft_message"] = draft_message
         processed_risk["draft_source"] = draft_source
 
+
+        # 최종 위험 리스트에 저장
         processed_risks.append(processed_risk)
 
-        for item in processed_risks:
-            print("위험:", item["risk_type"])
-            print("규정:", item["policy_evidence"])
-            print("초안:", item["draft_message"])
-            print("출처:", item["draft_source"])
-            print("-----")
-        # 보완 요청 초안 생성
-        try:
-            draft_message, draft_source = make_llm_draft(
-                result_for_draft,
-                policy_evidence
-            )
 
-        except Exception:
-            draft_message, draft_source = make_draft(
-                result_for_draft
-            )
+    # =====================================================
+    # 기존 단일 컬럼 호환 처리
+    #
+    # 현재 DB에는
+    # risk_type / risk_reason / policy_evidence ...
+    # 단일 컬럼도 존재하기 때문에
+    # 첫 번째 위험을 대표값으로 사용한다.
+    # =====================================================
 
-    
-    # 6. PostgreSQL 저장  DB저장
+    if processed_risks:
+
+        primary_risk = processed_risks[0]
+
+        risk_type = primary_risk["risk_type"]
+        risk_reason = primary_risk["risk_reason"]
+        policy_evidence = primary_risk["policy_evidence"]
+        draft_message = primary_risk["draft_message"]
+        draft_source = primary_risk["draft_source"]
+
+
+    # 정상 건
+    # → 위험 관련 값 없음
+    else:
+
+        risk_type = None
+        risk_reason = None
+        policy_evidence = None
+        draft_message = None
+        draft_source = None
+
+
+    # -----------------------------------------------------
+    # 학습 / 디버깅용 출력
+    # -----------------------------------------------------
+
+    for item in processed_risks:
+
+        print("위험:", item["risk_type"])
+        print("규정:", item["policy_evidence"])
+        print("초안:", item["draft_message"])
+        print("출처:", item["draft_source"])
+        print("-----")
+
+
+    # -----------------------------------------------------
+    # 7. PostgreSQL 저장
+    #
+    # 중요:
+    # 원본 risks가 아니라
+    # 규정/초안까지 붙은 processed_risks를 JSONB로 저장
+    # -----------------------------------------------------
+
     audit_id = save_audit_result(
         employee=result["employee"],
         department=result["department"],
         category=result["category"],
         amount=int(result["amount"]),
-        risks=risks,
+
+        risks=processed_risks,
+
         risk_type=risk_type,
         risk_reason=risk_reason,
         policy_evidence=policy_evidence,
@@ -135,13 +287,20 @@ def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 �
     )
 
 
-    # 7. API 결과 반환
+    # -----------------------------------------------------
+    # 8. API 응답
+    # -----------------------------------------------------
+
     return {
         "id": audit_id,
         "employee": result["employee"],
         "category": result["category"],
         "amount": int(result["amount"]),
-        "risks": risks,
+
+        # 위험별 규정/초안까지 포함된 최종 구조
+        "risks": processed_risks,
+
+        # 아래 단일 필드는 기존 구조 호환용 대표값
         "risk_type": risk_type,
         "risk_reason": risk_reason,
         "policy_evidence": policy_evidence,
@@ -149,25 +308,52 @@ def audit_expense(expense: ExpenseRequest): # 현재함수는 아무처리도 �
         "draft_source": draft_source
     }
 
+
+# =========================================================
+# POST /audit/batch
+# 여러 비용을 한 번에 위험 검사
+# =========================================================
+
 @app.post("/audit/batch")
 def audit_expenses_batch(batch: BatchAuditRequest):
 
-    # 1. 여러 비용을 dict로 변환
+    # -----------------------------------------------------
+    # 1. 여러 ExpenseRequest → 여러 dict
+    # -----------------------------------------------------
+
     expense_dicts = []
 
     for expense in batch.expenses:
-        expense_dicts.append(expense.model_dump())
+        expense_dicts.append(
+            expense.model_dump()
+        )
 
+
+    # -----------------------------------------------------
     # 2. 여러 비용 → DataFrame 여러 행
+    # -----------------------------------------------------
+
     df = pd.DataFrame(expense_dicts)
 
+
+    # -----------------------------------------------------
     # 3. 여러 행을 한 번에 위험 검사
+    #
+    # 중복 신청 / 카테고리 평균 비교처럼
+    # 여러 행이 있어야 가능한 검사를 여기서 수행
+    # -----------------------------------------------------
+
     df = detect_risks(df)
 
-    # 4. 검사 결과 모으기
+
+    # -----------------------------------------------------
+    # 4. 결과 모으기
+    # -----------------------------------------------------
+
     results = []
 
     for _, row in df.iterrows():
+
         results.append({
             "employee": row["employee"],
             "department": row["department"],
@@ -175,42 +361,148 @@ def audit_expenses_batch(batch: BatchAuditRequest):
             "amount": int(row["amount"]),
             "date": row["date"],
             "vendor": row["vendor"],
-            "reason": None if pd.isna(row["reason"]) else row["reason"],
+
+            # pandas NaN → JSON null 변환
+            "reason": (
+                None
+                if pd.isna(row["reason"])
+                else row["reason"]
+            ),
+
             "has_receipt": row["has_receipt"],
             "risks": row["risks"]
         })
 
+
+    # -----------------------------------------------------
     # 5. 결과 반환
+    # -----------------------------------------------------
+
     return {
         "count": len(results),
         "results": results
     }
-    
 
-@app.get("/audit-results") #저장된 검사 결과를 조회해라
+
+# =========================================================
+# GET /audit-results
+# PostgreSQL에 저장된 감사 결과 조회
+# =========================================================
+
+@app.get("/audit-results")
 def read_audit_results():
+
     rows = get_audit_results()
 
     return {
         "results": rows
-        }
+    }
 
 
-# JSON
+# =========================================================
+# PATCH /audit-results/{id}/review
+# Block 8 — Human Review
+# =========================================================
+
+@app.patch("/audit-results/{audit_id}/review")
+def review_audit_result(
+    audit_id: int,
+    review: ReviewRequest
+):
+
+    # -----------------------------------------------------
+    # 1. 허용된 상태인지 검사
+    # -----------------------------------------------------
+
+    if review.review_status not in ALLOWED_REVIEW_STATUSES:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "review_status는 "
+                "unreviewed, approved, "
+                "need_revision, rejected 중 하나여야 합니다."
+            )
+        )
+
+
+    # -----------------------------------------------------
+    # 2. PostgreSQL review_status UPDATE
+    # -----------------------------------------------------
+
+    row = update_review_status(
+        audit_id,
+        review.review_status
+    )
+
+
+    # -----------------------------------------------------
+    # 3. 해당 id가 DB에 없는 경우
+    # -----------------------------------------------------
+
+    if row is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Audit result not found"
+        )
+
+
+    # -----------------------------------------------------
+    # 4. 변경 결과 반환
+    # -----------------------------------------------------
+
+    return {
+        "id": audit_id,
+        "review_status": review.review_status
+    }
+
+
+# =========================================================
+# AuditFlow 현재 전체 흐름
+# =========================================================
+
+# 비용 JSON 입력
 # ↓
-# Pydantic 검사
+# ExpenseRequest / Pydantic 검증
 # ↓
-# expense
+# dict
 # ↓
-# 딕셔너리
-# ↓
-# DataFrame 1행
+# DataFrame
 # ↓
 # detect_risks()
 # ↓
-# result = 검사 결과 한 행
+# risks[]
 # ↓
-# return
+# for risk in risks
 # ↓
-# FastAPI가 JSON 응답으로 변환
-
+# 각 위험별 find_policy_evidence()
+# ↓
+# 규정 근거 있음?
+#
+# ├─ YES
+# │   ↓
+# │   make_llm_draft()
+# │   ↓
+# │   실패 시 make_draft() Template Fallback
+# │
+# └─ NO
+#     ↓
+#     LLM 호출 금지
+#     ↓
+#     draft_source = needs_review
+#
+# ↓
+# processed_risks[]
+# ↓
+# PostgreSQL risks JSONB 저장
+# ↓
+# GET /audit-results
+# ↓
+# 사람이 결과 확인
+# ↓
+# PATCH /audit-results/{id}/review
+# ↓
+# approved / need_revision / rejected
+# ↓
+# PostgreSQL review_status 변경
