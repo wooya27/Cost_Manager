@@ -15,6 +15,27 @@ with open("policy.txt","r",encoding="utf-8")as f:  #열기
 #     #st.write(policy_message)
 #     print(policy_message)
 
+def make_policy_chunks(policy_messages):
+    chunks = []
+
+    for policy_message in policy_messages:
+        lines = policy_message.strip().splitlines()
+
+        if not lines:
+            continue
+
+        section = lines[0]
+
+        chunk = {
+            "text": policy_message.strip(),
+            "source": "policy.txt",
+            "section": section
+        }
+
+        chunks.append(chunk)
+
+    return chunks
+
 RISK_KEYWORDS = {
     "식대한도 초과" : "식대",
     "택시비 사유 부족" : "택시비",
@@ -55,3 +76,30 @@ def make_request_message(risk_type):
     if risk_request is None:
         return "요청사항을 작성하시오"   
     return risk_request
+
+def make_policy_chunks(policy_messages):
+    chunks = []
+
+    for policy_message in policy_messages:
+        lines = policy_message.strip().splitlines()
+
+        if not lines:
+            continue
+
+        section = lines[0]
+
+        chunk = {
+            "text": policy_message.strip(),
+            "source": "policy.txt",
+            "section": section
+        }
+
+        chunks.append(chunk)
+
+    return chunks
+
+chunks = make_policy_chunks(policy_messages)
+
+for chunk in chunks[:10]:
+    print(chunk)
+    print("-----")

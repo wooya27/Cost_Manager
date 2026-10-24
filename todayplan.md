@@ -6,20 +6,14 @@
 >
 > **오늘 끝나면 보여야 할 최종 흐름:** POST /audit → risks[] 탐지 → 근거 확인 → LLM 또는 needs_review → PostgreSQL 저장 → GET 조회 → PATCH Review → 재실행 후 상태 유지
 
-## 블록 9 (25~30분) — Audit Trail + DB 실패 확인 · 🧠 직접 작성  👉 지금 이거
-- [ ] `review_note` / `reviewed_at` / `updated_at` 추가
-- [ ] review 변경 시 timestamp 기록
-- [ ] 서버 재시작 후 상태 유지 확인
-- [ ] 가능하면 DB 잠깐 내려 실패 확인 (에러 위치 + 로그)
-- 끝나면 보여야 할 결과: 누가/언제/어떤 상태로 검수했는지 최소 기록 가능
-
-## 블록 10 (25~30분) — Day1 통합검증 + Commit/PR · 🔧 세팅
+## 블록 10 (25~30분) — Day1 통합검증 + Commit/PR · 🔧 세팅  👉 지금 이거
 - [ ] 통합 테스트: /audit · /audit/batch · risks[] · needs_review · DB 저장 · GET · PATCH · 재시작 후 유지
 - [ ] `git status` → 변경 파일 확인 → commit → push → PR 생성
 - 끝나면 보여야 할 결과: Day1(= MASTER의 Day2) 핵심 Backend/DB/Review 흐름 종료
 
 ---
 ## 완료
+- [x] (10/23) 블록9 Audit Trail — review_note/reviewed_at/updated_at 추가 + review 변경 시 timestamp 기록 (커밋 ea24c2e)
 - [x] (10/18) 블록1 기준점 고정 + 서버/DB 동작 확인
 - [x] (10/18) 블록2 requirements.txt 충돌 제거 + .env.example + docker-compose 비밀번호 정리
 - [x] (10/18) 블록3 FastAPI lifespan → create_tables() 자동 실행
