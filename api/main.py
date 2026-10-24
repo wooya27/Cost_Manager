@@ -58,6 +58,7 @@ class BatchAuditRequest(BaseModel):
 # Human Review 상태 변경용 입력 형식
 class ReviewRequest(BaseModel):
     review_status: str
+    review_note: str | None = None
 
 
 # 사람이 변경할 수 있는 검수 상태
@@ -432,8 +433,9 @@ def review_audit_result(
 
     row = update_review_status(
         audit_id,
-        review.review_status
-    )
+        review.review_status,
+        review.review_note
+)
 
 
     # -----------------------------------------------------
@@ -454,9 +456,9 @@ def review_audit_result(
 
     return {
         "id": audit_id,
-        "review_status": review.review_status
+        "review_status": review.review_status,
+        "review_note": review.review_note
     }
-
 
 # =========================================================
 # AuditFlow 현재 전체 흐름
