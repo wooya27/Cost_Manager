@@ -1,9 +1,14 @@
 # 관련 규정을 찾는다
+import os
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
 
-# import streamlit as st
-# import pandas as pd
-# from src.audit_rules import detect_risks
+load_dotenv()
 
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
 
 with open("policy.txt","r",encoding="utf-8")as f:  #열기
     #"r":읽고 | encoding="utf-8": 한글이 깨지지않게 | as f : 지금 열린 파일 이름을 잠깐 f라고 부를게
@@ -35,6 +40,18 @@ def make_policy_chunks(policy_messages):
         chunks.append(chunk)
 
     return chunks
+
+def make_embedding(text):
+    result = client.models.embed_content(
+        model="gemini-embedding-2",
+        contents=text,
+        config=types.EmbedContentConfig(
+            output_dimensionality=768
+        )
+    )
+
+    return result.embeddings[0].values
+
 
 RISK_KEYWORDS = {
     "식대한도 초과" : "식대",
@@ -77,29 +94,19 @@ def make_request_message(risk_type):
         return "요청사항을 작성하시오"   
     return risk_request
 
-def make_policy_chunks(policy_messages):
-    chunks = []
+if __name__ == "__main__":
+    chunks = make_policy_chunks(policy_messages)
 
-    for policy_message in policy_messages:
-        lines = policy_message.strip().splitlines()
+    
 
-        if not lines:
-            continue
+    embedding = make_embedding(chunks[0]["text"])
 
-        section = lines[0]
+    print("벡터 길이:", len(embedding))
+    print("앞 5개:", embedding[:5])
 
-        chunk = {
-            "text": policy_message.strip(),
-            "source": "policy.txt",
-            "section": section
-        }
+    for chunk in chunks[:10]:
+            print(chunk)
+            print("-----")
 
-        chunks.append(chunk)
 
-    return chunks
 
-chunks = make_policy_chunks(policy_messages)
-
-for chunk in chunks[:10]:
-    print(chunk)
-    print("-----")
