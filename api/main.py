@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import pandas as pd
 
 from src.audit_rules import detect_risks
-from src.policy_retriever import find_policy_evidence, policy_messages
+from src.policy_retriever import find_similar_policies
 from src.draft_generator import make_draft
 from src.llm_generator import make_llm_draft
 
@@ -144,18 +144,22 @@ def audit_expense(expense: ExpenseRequest):
         # 6-1. 현재 위험에 맞는 규정 검색
         # -------------------------------------------------
 
-        policy_evidence = find_policy_evidence(
-            risk_type,
-            policy_messages
+        # 6-1. 현재 위험에 맞는 규정 Vector Search
+
+        similar_policies = find_similar_policies(
+            risk_reason,
+            top_k=3
         )
 
+        if similar_policies:
+            policy_evidence = "\n\n".join(
+                policy[1] for policy in similar_policies
+            )
+        else:
+            policy_evidence = "관련 규정 확인 필요"
 
-        # 원본 risk를 복사해서
-        # 후속 처리 결과를 추가할 객체 생성
         processed_risk = risk.copy()
-
         processed_risk["policy_evidence"] = policy_evidence
-
 
         # -------------------------------------------------
         # 6-2. LLM / Template에 전달할 데이터 준비

@@ -3,6 +3,8 @@ import psycopg
 
 from dotenv import load_dotenv
 from psycopg.types.json import Jsonb
+from pgvector import Vector
+from pgvector.psycopg import register_vector
 
 
 load_dotenv()
@@ -237,3 +239,81 @@ def update_review_status(
     conn.close()
 
     return row
+
+def save_policy_chunk(text, source, embedding):
+    conn = get_connection()
+
+    register_vector(conn)
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id
+            FROM policy_chunks
+            WHERE text = %s AND source = %s
+            """,
+            (text, source)
+        )
+
+        existing = cur.fetchone()
+
+        if existing:
+            conn.close()
+            return existing[0]
+
+        cur.execute(
+            """
+            INSERT INTO policy_chunks (
+                text,
+                source,
+                embedding
+            )
+            VALUES (%s, %s, %s)
+            RETURNING id
+            """,
+            (
+                text,
+                source,
+                Vector(embedding)
+            )
+        )
+
+        new_id = cur.fetchone()[0]
+
+    conn.commit()
+    conn.close()
+
+    return new_id
+
+def search_policy_chunks(query_embedding, top_k=3):
+    conn = get_connection()
+
+    register_vector(conn)
+
+    query_vector = Vector(query_embedding)
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                id,
+                text,
+                source,
+                1 - (embedding <=> %s) AS similarity
+            FROM policy_chunks
+            WHERE embedding IS NOT NULL
+            ORDER BY embedding <=> %s
+            LIMIT %s
+            """,
+            (
+                query_vector,
+                query_vector,
+                top_k
+            )
+        )
+
+        results = cur.fetchall()
+
+    conn.close()
+
+    return results

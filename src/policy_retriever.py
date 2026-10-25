@@ -3,6 +3,7 @@ import os
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+from src.database import save_policy_chunk, search_policy_chunks
 
 load_dotenv()
 
@@ -94,19 +95,37 @@ def make_request_message(risk_type):
         return "요청사항을 작성하시오"   
     return risk_request
 
+
 if __name__ == "__main__":
     chunks = make_policy_chunks(policy_messages)
 
-    
+    for chunk in chunks:
+        embedding = make_embedding(chunk["text"])
 
-    embedding = make_embedding(chunks[0]["text"])
+        saved_id = save_policy_chunk(
+            chunk["text"],
+            chunk["source"],
+            embedding
+        )
 
-    print("벡터 길이:", len(embedding))
-    print("앞 5개:", embedding[:5])
+        print("저장 id:", saved_id)
+        print("규정:", chunk["section"])
+        print("-----")
 
-    for chunk in chunks[:10]:
-            print(chunk)
-            print("-----")
+def find_similar_policies(risk_reason, top_k=3):
+    query_embedding = make_embedding(risk_reason)
 
+    results = search_policy_chunks(
+        query_embedding,
+        top_k
+    )
 
+    return results
+
+risk_reason = "식대 금액이 한도를 초과했습니다"
+
+results = find_similar_policies(risk_reason)
+
+for result in results:
+    print(result)
 
