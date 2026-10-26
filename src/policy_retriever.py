@@ -59,7 +59,7 @@ RISK_KEYWORDS = {
     "택시비 사유 부족" : "택시비",
     "영수증누락" : "영수증",
     "중복 신청 의심" : "중복",
-    "야근 식대 한도초과" : "야근식대",
+    "야근 교통비 한도초과" : "교통비",
     "사무용품 추가 승인" : "사무용품"
 }
 
@@ -85,7 +85,8 @@ REQUEST_MESSAGE = { # risk_type : 그 위험에 맞는 보완 요청
     "택시비 사유 부족": "택시 이용 사유를 작성해 주세요.",
     "중복 신청 의심": "중복 신청 여부를 확인해 주세요.",
     "식대한도 초과": "식대 한도 초과 사유를 확인해 주세요.",
-    "사무용품 추가 승인": "사무용품 구매에 필요한 승인 내역을 확인해 주세요."
+    "사무용품 추가 승인": "사무용품 구매에 필요한 승인 내역을 확인해 주세요.",
+    "야근 교통비 한도초과": "교통비 한도 초과 사유를 확인해 주세요."
 }
 
 def make_request_message(risk_type): 
@@ -96,6 +97,20 @@ def make_request_message(risk_type):
     return risk_request
 
 
+
+   
+
+def find_similar_policies(risk_reason, top_k=3):
+    query_embedding = make_embedding(risk_reason)
+
+    results = search_policy_chunks(
+        query_embedding,
+        top_k
+    )
+
+    return results
+
+    
 if __name__ == "__main__":
     chunks = make_policy_chunks(policy_messages)
 
@@ -112,20 +127,17 @@ if __name__ == "__main__":
         print("규정:", chunk["section"])
         print("-----")
 
-def find_similar_policies(risk_reason, top_k=3):
-    query_embedding = make_embedding(risk_reason)
+    # 검색 테스트 (직접 실행할 때만 동작)
+    risk_type = "식대한도 초과"
+    risk_reason = "식대 금액이 한도를 초과했습니다"
 
-    results = search_policy_chunks(
-        query_embedding,
-        top_k
-    )
+    keyword_result = find_policy_evidence(risk_type, policy_messages)
+    vector_results = find_similar_policies(risk_reason, top_k=3)
 
-    return results
+    print("=== Keyword Search ===")
+    print(keyword_result)
 
-risk_reason = "식대 금액이 한도를 초과했습니다"
-
-results = find_similar_policies(risk_reason)
-
-for result in results:
-    print(result)
+    print("=== Vector Search ===")
+    for policy in vector_results:
+        print(policy)
 
