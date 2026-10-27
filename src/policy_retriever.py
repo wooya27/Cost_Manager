@@ -110,7 +110,7 @@ def find_similar_policies(risk_reason, top_k=3):
 
 def find_keyword_policies(query, policy_messages, top_k=3):
     matched_policies = []
-
+    
     for keyword in RISK_KEYWORDS.values():
         if keyword in query:
 

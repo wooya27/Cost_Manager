@@ -1,29 +1,34 @@
-# 오늘 할 일 (10/23 · DAY 1 블록9~10 남음)
+# 오늘 할 일 (10/27 · DAY 2 — RAG, 블록 18~20 남음)
 
-> 기준 로드맵: **`.claude/plans/10.17 계획 v5일분할.md`** DAY 1 (Block 1~10)
-> 블록 1~8은 끝났고, 남은 건 블록 9~10. 순서대로 위에서부터. **지금 집중할 건 👉 표시된 1개뿐.** 나머지는 그거 끝나고 보면 돼.
-> 세션 사이 10분 휴식. 에러 15분 넘게 막히면 질문. 2블록 넘게 같은 데서 막히면 기록하고 다음으로.
+> 기준 로드맵: **`.claude/plans/10.17 계획 v5일분할.md`** DAY 2 (Block 11~20)
+> DAY 1(Backend/DB/Review)은 끝났고, 지금은 **DAY 2 = pgVector RAG + 평가**.
+> Block 11~17은 됐고(벡터검색은 이미 `/audit`에 연결됨), 남은 건 **평가 파트(B18~B20)**.
+> **지금 집중할 건 👉 표시된 1개뿐.** 나머지는 그거 끝나고 보면 돼.
+> 세션 사이 10분 휴식. 에러 15분 넘게 막히면 질문.
 >
-> **오늘 끝나면 보여야 할 최종 흐름:** POST /audit → risks[] 탐지 → 근거 확인 → LLM 또는 needs_review → PostgreSQL 저장 → GET 조회 → PATCH Review → 재실행 후 상태 유지
+> **DAY 2 끝나면 보여야 할 최종 결과:** `/audit`에서 벡터검색이 실제로 돌고 + Keyword Hit@3 vs Vector Hit@3 숫자 비교표가 나온다.
 
-## 블록 10 (25~30분) — Day1 통합검증 + Commit/PR · 🔧 세팅  👉 지금 이거
-- [ ] 통합 테스트: /audit · /audit/batch · risks[] · needs_review · DB 저장 · GET · PATCH · 재시작 후 유지
+## 블록 19 (25~30분) — Hit@3 계산 (Keyword vs Vector) · 🧠 직접 작성  👉 지금 이거
+- [x] (정리 완료) 평가셋 `rag_eval_set.csv`를 `venv/Scripts/` → **프로젝트 루트로 이동 완료**
+- [ ] 평가셋 50줄을 한 줄씩 읽어서 `query`로 Keyword Top3 / Vector Top3 각각 검색
+- [ ] 각 줄의 `expected_policy`가 Top3 안에 들어있는지 판정 (= hit / miss)
+- [ ] 성공 개수 세서 Hit@3 계산: `Keyword Hit@3 = __/50`, `Vector Hit@3 = __/50`
+- 끝나면 보여야 할 결과: 실제 실행값으로 채운 비교표 (추정값 금지, 돌린 숫자만)
+
+## 블록 20 (25~30분) — DAY 2 통합검증 + 결과 기록 + commit/PR · 🔧 세팅
+- [ ] `/audit` 호출해서 RAG(벡터검색)가 실제로 도는지 확인 + 근거 없음 케이스 확인
+- [ ] Keyword/Vector Hit@3 비교 결과를 README(또는 메모)에 기록
 - [ ] `git status` → 변경 파일 확인 → commit → push → PR 생성
-- 끝나면 보여야 할 결과: Day1(= MASTER의 Day2) 핵심 Backend/DB/Review 흐름 종료
+- 끝나면 보여야 할 결과: DAY 2 종료 — pgVector RAG 실제 연결 + Keyword vs Vector 숫자 비교 완료
 
 ---
 ## 완료
-- [x] (10/23) 블록9 Audit Trail — review_note/reviewed_at/updated_at 추가 + review 변경 시 timestamp 기록 (커밋 ea24c2e)
-- [x] (10/18) 블록1 기준점 고정 + 서버/DB 동작 확인
-- [x] (10/18) 블록2 requirements.txt 충돌 제거 + .env.example + docker-compose 비밀번호 정리
-- [x] (10/18) 블록3 FastAPI lifespan → create_tables() 자동 실행
-- [x] (10/18) 블록4 detect_risks() → risks[] 구조로 변경 (복합 위험)
-- [x] (10/18) 블록5 risks[]를 /audit 응답 + PostgreSQL 저장까지 연결
-- [x] (10/21) 블록6 POST /audit/batch — 여러 건 입력 → DataFrame 여러 행 → 건별 risks[] 반환
-- [x] (10/23) 블록7 needs_review — 근거 없으면 LLM 호출 X → draft_source="needs_review" (+ /audit 루프 버그 3개 수정)
-- [x] (10/23) 블록8 PATCH /audit-results/{id}/review — 상태 검증 + 없는 id 404
-- [x] (이전) `/audit` → 기존 3함수(detect_risks→find_policy_evidence→make_draft) 연결, 결과 JSON 반환
-- [x] (이전) 실제 Gemini LLM 연결 + try/except fallback (성공→`llm`, 실패→`template`)
-- [x] (이전) `/audit` → PostgreSQL 저장 + DB id 반환
-- [x] (이전) `GET /audit-results` 조회
-- [x] (이전) `update_review_status()` DB 함수 추가
+- [x] (DAY 2) B11 pgVector extension + `policy_chunks` 테이블 (save/search 함수 `database.py`)
+- [x] (DAY 2) B12 policy.txt → Chunk 분리 (`make_policy_chunks`)
+- [x] (DAY 2) B13 Chunk Embedding 생성 (`make_embedding`, Gemini 768차원)
+- [x] (DAY 2) B14 Embedding → pgVector 저장 (`save_policy_chunk`)
+- [x] (DAY 2) B15 Query Vector Search (`find_similar_policies`)
+- [x] (DAY 2) B16 `/audit`에 Vector Search 연결 (`api/main.py:149`)
+- [x] (DAY 2) B17 Keyword Retriever baseline 유지 (`find_keyword_policies`)
+- [x] (DAY 2) B18 RAG 평가셋 50개 작성 — 내용 완성(단 위치 이동은 B19 첫 줄에서 처리)
+- [x] (DAY 1 전체) Backend/DB/Review 흐름 종료: /audit · /audit/batch · risks[] · needs_review · PATCH review · Audit Trail · DB 저장/조회

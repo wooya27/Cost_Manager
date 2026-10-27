@@ -410,3 +410,20 @@ python -m src.agent_workflow
 - 검수 상태 및 사용자별 이력 저장
 - 테스트 자동화
 - 실제 사내 비용 규정 및 업무 시스템 연동
+
+
+## RAG Retrieval Evaluation
+
+평가 환경:
+- Policy documents: 6
+- Evaluation queries: 50
+- Metric: Hit@3
+
+결과:
+- Keyword Search Hit@3: 15 / 50 = 30.0%
+- Vector Search Hit@3: 50 / 50 = 100.0%
+
+해석:
+- Keyword Search는 질문에 규정 키워드가 직접 포함되지 않으면 검색에 실패하는 경우가 많았다.
+- Vector Search는 표현이 달라도 의미 기반으로 관련 규정을 검색할 수 있었다.
+- 현재 평가는 6개 규정과 50개 질의로 수행한 소규모 평가이며, 이후 규정 수와 평가셋을 확장할 예정이다.
