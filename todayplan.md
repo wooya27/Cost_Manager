@@ -8,21 +8,13 @@
 >
 > **DAY 2 끝나면 보여야 할 최종 결과:** `/audit`에서 벡터검색이 실제로 돌고 + Keyword Hit@3 vs Vector Hit@3 숫자 비교표가 나온다.
 
-## 블록 19 (25~30분) — Hit@3 계산 (Keyword vs Vector) · 🧠 직접 작성  👉 지금 이거
-- [x] (정리 완료) 평가셋 `rag_eval_set.csv`를 `venv/Scripts/` → **프로젝트 루트로 이동 완료**
-- [ ] 평가셋 50줄을 한 줄씩 읽어서 `query`로 Keyword Top3 / Vector Top3 각각 검색
-- [ ] 각 줄의 `expected_policy`가 Top3 안에 들어있는지 판정 (= hit / miss)
-- [ ] 성공 개수 세서 Hit@3 계산: `Keyword Hit@3 = __/50`, `Vector Hit@3 = __/50`
-- 끝나면 보여야 할 결과: 실제 실행값으로 채운 비교표 (추정값 금지, 돌린 숫자만)
-
-## 블록 20 (25~30분) — DAY 2 통합검증 + 결과 기록 + commit/PR · 🔧 세팅
-- [ ] `/audit` 호출해서 RAG(벡터검색)가 실제로 도는지 확인 + 근거 없음 케이스 확인
-- [ ] Keyword/Vector Hit@3 비교 결과를 README(또는 메모)에 기록
-- [ ] `git status` → 변경 파일 확인 → commit → push → PR 생성
-- 끝나면 보여야 할 결과: DAY 2 종료 — pgVector RAG 실제 연결 + Keyword vs Vector 숫자 비교 완료
+> ✅ DAY 2(RAG) 전체 완료. 다음은 **DAY 3 (LangGraph + 장애복구 + Logging, Block 21~30)**.
+> "다음 뭐해?" 라고 하면 DAY 3 블록 뽑아줄게.
 
 ---
 ## 완료
+- [x] (DAY 2) B19 Hit@3 계산 — Keyword vs Vector (`src/rag_evaluator.py`, 실측값)
+- [x] (DAY 2) B20 DAY 2 통합검증 + 결과 기록 + commit/PR (RAG 평가 v1/v2 README 반영)
 - [x] (DAY 2) B11 pgVector extension + `policy_chunks` 테이블 (save/search 함수 `database.py`)
 - [x] (DAY 2) B12 policy.txt → Chunk 분리 (`make_policy_chunks`)
 - [x] (DAY 2) B13 Chunk Embedding 생성 (`make_embedding`, Gemini 768차원)

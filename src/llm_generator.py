@@ -38,7 +38,7 @@ def make_llm_draft(result, policy_evidence):
 """
 
     response = client.chat.completions.create(
-        model= "gemini-3.5-flash",
+        model= "gemini-3.8-flash",
         messages=[
             {
                 "role": "user",
