@@ -1,11 +1,12 @@
 from typing_extensions import TypedDict
 import pandas as pd
-
+from langgraph.graph import StateGraph, START, END
 from src.audit_rules import detect_risks
 from src.policy_retriever import find_similar_policies
 from src.draft_generator import make_draft
-from src.observability import log_workflow
+from src.observability import log_workflow 
 from src.llm_generator import make_llm_draft
+from src.database import save_audit_result
 
 class AuditState(TypedDict, total=False):
     expense: dict
@@ -176,10 +177,11 @@ def check_risk_node(state):
 def policy_search_node(state): #현재 작업 정보를 state로 받아서 규정 검색을 담당하는 작업 단계를 만든다.
     risk_type = state["risk_type"]
 
-    evidence = find_policy_evidence( 
-        risk_type,
-        policy_messages
-    )
+    risk_reason = state["risk_reason"]
+
+    evidence = find_similar_policies(
+          risk_reason
+      )
 
     state["policy_evidence"] = evidence #찾은 규정 근거를 State의 policy_evidence 칸에 써 넣는다.
     
@@ -200,33 +202,22 @@ def draft_message_node(state):  #초안생성을 node가 일했으니까, 일한
 # state를 위험 확인 Node에 넣고 
 # 그 결과 state를 규정 검색 Node에 넣고 
 # 그 결과를 다시 초안 생성 Node에 넣는다.
-def run_workflow(state): # node들을 연결하는 함수
-    state = check_risk_node(state)
-    state = policy_search_node(state)
-    state = draft_message_node(state)
+def run_workflow(state: AuditState):
 
-    log_workflow(state) #현재 결과를 파일에 기록
-    return state
+    result = workflow.invoke(
+        state
+    )
 
+    log_workflow(
+        result
+    )
 
-if __name__ == "__main__":
-
-    test_state = {
-        "employee": "김민수",
-        "amount": 50000,
-        "category": "식대",
-        "risk_type": "영수증누락",
-        "risk_reason": "영수증 없음"
-    }
-
-    result = run_workflow(test_state)
-
-    print("규정 근거:", result["policy_evidence"])
-    print("보완 요청 초안:", result["draft_message"])
-    print("초안 출처:", result["draft_source"])
+    return result
 
 
-    def save_node(state: AuditState):
+
+
+def save_node(state: AuditState):
 
     expense = state["expense"]
 
@@ -289,3 +280,133 @@ if __name__ == "__main__":
     return {
         "audit_id": audit_id
     }
+
+def route_after_audit(state: AuditState):
+
+    risks = state.get(
+        "risks",
+        []
+    )
+
+    if risks:
+        return "retrieve"
+
+    return "save"
+
+def route_after_retrieve(state: AuditState):
+
+    policy_evidence = state.get(
+        "policy_evidence",
+        ""
+    )
+
+    if policy_evidence:
+        return "generate"
+
+    return "review"
+
+def route_after_generate(state: AuditState):
+
+    error = state.get(
+        "error",
+        ""
+    )
+
+    if error:
+        return "fallback"
+
+    return "review"
+
+graph = StateGraph(
+    AuditState
+)
+
+graph.add_node(
+    "audit",
+    audit_node
+)
+
+graph.add_node(
+    "retrieve",
+    retrieve_node
+)
+
+graph.add_node(
+    "generate",
+    generate_node
+)
+
+graph.add_node(
+    "fallback",
+    fallback_node
+)
+
+graph.add_node(
+    "review",
+    review_gate_node
+)
+
+graph.add_node(
+    "save",
+    save_node
+)
+
+
+graph.add_edge(
+    START,
+    "audit"
+)
+
+
+
+graph.add_conditional_edges(
+    "audit",
+    route_after_audit,
+    {
+        "retrieve": "retrieve",
+        "save": "save"
+    }
+)
+graph.add_conditional_edges(
+    "retrieve",
+    route_after_retrieve,
+    {
+        "generate": "generate",
+        "review": "review"
+    }
+)
+graph.add_conditional_edges(
+    "generate",
+    route_after_generate,
+    {
+        "fallback": "fallback",
+        "review": "review"
+    }
+)
+
+workflow = graph.compile()
+
+
+
+if __name__ == "__main__":
+
+    test_state = {
+        "expense": {
+            "employee": "김민수",
+            "department": "개발팀",
+            "category": "식대",
+            "amount": 50000,
+            "date": "2026-10-28",
+            "vendor": "테스트식당",
+            "reason": None,
+            "has_receipt": "N"
+        }
+    }
+
+    result = run_workflow(
+        test_state
+    )
+
+    print(
+        "최종 State:",result
+    )
