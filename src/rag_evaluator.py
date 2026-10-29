@@ -1,3 +1,4 @@
+#기존 6개 규정 / 50개 평가 기록 보존
 import pandas as pd
 
 from src.policy_retriever import (

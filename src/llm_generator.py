@@ -6,14 +6,14 @@ from openai import OpenAI
 
 load_dotenv()
 
+def make_llm_draft(result, policy_evidence):
 
-client = OpenAI(
+    client = OpenAI(
     api_key=os.getenv("GEMINI_API_KEY"),
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    timeout=10,
+    max_retries=0,
 )
-
-
-def make_llm_draft(result, policy_evidence):
 
     employee = result["employee"]
     amount = result["amount"]
