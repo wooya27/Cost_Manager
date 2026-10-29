@@ -62,13 +62,14 @@ def audit_node(state: AuditState):
 
 
 def retrieve_node(state: AuditState):
+
     start_time = time.perf_counter()
     try:
         risks = state.get(
             "risks",
             []
         )
-        similar_policies = []
+        # similar_policies = []
 
         if not risks:
             return {

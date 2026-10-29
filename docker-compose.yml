@@ -1,6 +1,5 @@
-#Docker에게 “PostgreSQL을 이런 설정으로 실행해줘”라고 적어놓는 실행 설명서야.
-
 services:
+
   db:
     image: pgvector/pgvector:pg18
     container_name: auditflow_db
@@ -15,6 +14,33 @@ services:
 
     volumes:
       - auditflow_data:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  api:
+    build: .
+    container_name: auditflow_api
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+
+    depends_on:
+      db:
+        condition: service_healthy
+
 
 volumes:
   auditflow_data:
