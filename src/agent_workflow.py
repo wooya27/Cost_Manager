@@ -111,6 +111,7 @@ def generate_node(state: AuditState):
     result_for_draft["risk_reason"] = risk["risk_reason"]
 
     try:
+        raise Exception("1차 LLM 테스트 실패")
 
         draft_message, draft_source = make_llm_draft(
             result_for_draft,
@@ -129,6 +130,53 @@ def generate_node(state: AuditState):
             "error": str(e)
         }
 
+
+
+
+def retry_node(state: AuditState):
+
+    expense = state["expense"]
+
+    risks = state.get(
+        "risks",
+        []
+    )
+
+    policy_evidence = state.get(
+        "policy_evidence",
+        ""
+    )
+
+    if not risks:
+        return {
+            "error": "위험 정보 없음"
+        }
+
+    risk = risks[0]
+
+    result_for_draft = expense.copy()
+
+    result_for_draft["risk_type"] = risk["risk_type"]
+    result_for_draft["risk_reason"] = risk["risk_reason"]
+
+    try:
+        draft_message, draft_source = make_llm_draft(
+            result_for_draft,
+            policy_evidence
+        )
+
+        return {
+            "draft_message": draft_message,
+            "draft_source": draft_source,
+            "error": ""
+        }
+
+    except Exception as e:
+        return {
+            "error": str(e)
+        }
+
+    
 def review_gate_node(state: AuditState):
 
     return {
@@ -293,6 +341,30 @@ def route_after_audit(state: AuditState):
 
     return "save"
 
+def route_after_generate(state: AuditState):
+
+    error = state.get(
+        "error",
+        ""
+    )
+
+    if error:
+        return "retry"
+
+    return "review"
+
+def route_after_retry(state: AuditState):
+
+    error = state.get(
+        "error",
+        ""
+    )
+
+    if error:
+        return "fallback"
+
+    return "review"
+
 def route_after_retrieve(state: AuditState):
 
     policy_evidence = state.get(
@@ -305,17 +377,6 @@ def route_after_retrieve(state: AuditState):
 
     return "review"
 
-def route_after_generate(state: AuditState):
-
-    error = state.get(
-        "error",
-        ""
-    )
-
-    if error:
-        return "fallback"
-
-    return "review"
 
 graph = StateGraph(
     AuditState
@@ -335,7 +396,10 @@ graph.add_node(
     "generate",
     generate_node
 )
-
+graph.add_node(
+    "retry",
+    retry_node
+)
 graph.add_node(
     "fallback",
     fallback_node
@@ -379,10 +443,25 @@ graph.add_conditional_edges(
     "generate",
     route_after_generate,
     {
+        "retry": "retry",
+        "review": "review"
+    }
+)
+
+
+graph.add_conditional_edges(
+    "retry",
+    route_after_retry,
+    {
         "fallback": "fallback",
         "review": "review"
     }
 )
+
+graph.add_edge("fallback", "review")   # fallback 방 → review 방
+graph.add_edge("review", "save")       # review 방 → save 방
+graph.add_edge("save", END)            # save 방 → END(그래프 끝)
+
 
 workflow = graph.compile()
 
@@ -391,18 +470,17 @@ workflow = graph.compile()
 if __name__ == "__main__":
 
     test_state = {
-        "expense": {
-            "employee": "김민수",
-            "department": "개발팀",
-            "category": "식대",
-            "amount": 50000,
-            "date": "2026-10-28",
-            "vendor": "테스트식당",
-            "reason": None,
-            "has_receipt": "N"
-        }
+    "expense": {
+        "employee": "김민수",
+        "department": "개발팀",
+        "category": "식대",
+        "amount": 50000,
+        "date": "2026-10-28",
+        "vendor": "테스트식당",
+        "reason": None,
+        "has_receipt": "N"
     }
-
+}
     result = run_workflow(
         test_state
     )

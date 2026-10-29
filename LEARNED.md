@@ -21,3 +21,6 @@
 [2026-10-26] `if __name__ == "__main__":` 가드 — 모듈 최상단 open()을 __main__ 안으로 옮겨 import 크래시 해결 (src/policy_retriever.py, study/day12.md)
 [2026-10-26] 실행 순서(만들기→쓰기) — open 블록을 make_policy_chunks 호출 위로 옮겨 NameError 해결 (src/policy_retriever.py, study/day12.md)
 [2026-10-26] 공식 문서로 모델명 확인 — Gemini 임베딩 모델명을 gemini-embedding-001로 수정 (src/policy_retriever.py)
+- [2026-10-29] LangGraph StateGraph — 심사 워크플로를 노드 7개로 재구성, state 가방을 넘기며 실행 (src/agent_workflow.py, study/day13.md)
+- [2026-10-29] add_conditional_edges + 라우팅 함수 — 위험/근거/error 유무로 갈림길 분기 (route_after_* 4개) (src/agent_workflow.py)
+- [2026-10-29] 출구 엣지 + END — 모든 노드는 나가는 길이 있어야 함, save→END로 그래프 종료 (src/agent_workflow.py, study/day13.md)
