@@ -262,3 +262,40 @@ def test_no_policy_evidence_skips_llm():
     assert data["draft_source"] == "needs_review"
 
     mock_llm.assert_not_called()
+
+def test_supply_approval_boundary():
+    df = pd.DataFrame([
+        {
+            "employee": "김민수",
+            "date": "2026-10-31",
+            "amount": 49999,
+            "vendor": "문구점A",
+            "category": "소모품",
+            "reason": "사무용품 구매",
+            "has_receipt": "Y"
+        },
+        {
+            "employee": "이지은",
+            "date": "2026-10-31",
+            "amount": 50000,
+            "vendor": "문구점B",
+            "category": "소모품",
+            "reason": "사무용품 구매",
+            "has_receipt": "Y"
+        }
+    ])
+
+    result = detect_risks(df)
+
+    first_risk_types = [
+        risk["risk_type"]
+        for risk in result.iloc[0]["risks"]
+    ]
+
+    second_risk_types = [
+        risk["risk_type"]
+        for risk in result.iloc[1]["risks"]
+    ]
+
+    assert "사무용품 추가 승인" not in first_risk_types
+    assert "사무용품 추가 승인" in second_risk_types

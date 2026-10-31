@@ -89,14 +89,13 @@ def detect_risks(df):
     # 7. 사무용품 추가 승인
     supply_mask = (
         (df["category"] == "소모품")
-        & (df["amount"] > 2000)
-        & (df["amount"] < 50000)
+        & (df["amount"] >= 50000)
     )
 
     add_risk(
         supply_mask,
         "사무용품 추가 승인",
-        "사무용품 추가 승인 대상"
+        "사무용품 50,000원 이상 추가 승인 대상"
     )
 
     return df
