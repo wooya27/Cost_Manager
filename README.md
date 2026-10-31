@@ -803,3 +803,36 @@ PostgreSQL 저장
 ```
 
 현재까지 FastAPI, PostgreSQL, pgVector, Gemini API를 실제 업무 흐름 안에서 연결했으며, 다음 단계에서는 LangGraph를 이용해 Workflow의 상태와 조건 분기, 실패 및 복구 경로를 명시적으로 관리하는 구조로 확장할 예정입니다.
+
+## 실행 방법
+
+### 1. 저장소 받기
+
+git clone <repository-url>
+
+cd Cost_Manager
+
+### 2. 환경변수 설정
+
+.env.example 파일을 복사하여 .env 파일을 생성합니다.
+
+필요한 값:
+
+POSTGRES_USER
+POSTGRES_PASSWORD
+POSTGRES_DB
+GEMINI_API_KEY
+
+### 3. Docker 실행
+
+docker compose up --build
+
+### 4. FastAPI 확인
+
+브라우저에서 아래 주소 접속
+
+http://localhost:8000/docs
+
+### 5. 종료
+
+docker compose down
