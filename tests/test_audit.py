@@ -1,3 +1,4 @@
+import pytest
 import pandas as pd
 
 from src.audit_rules import detect_risks
@@ -92,6 +93,7 @@ def test_invalid_request_returns_422():
 
     assert response.status_code == 422
 
+@pytest.mark.integration
 def test_vector_search_top3():
     results = find_similar_policies(
         "영수증이 첨부되지 않았습니다.",
@@ -124,6 +126,7 @@ def test_llm_fallback():
 
     assert result["draft_source"] == "template"
 
+@pytest.mark.integration
 def test_database_save_and_read():
     audit_id = save_audit_result(
         employee="pytest테스트",
@@ -149,7 +152,7 @@ def test_database_save_and_read():
     assert saved_row[1] == "pytest테스트"
     assert saved_row[4] == 10000
 
-
+@pytest.mark.integration
 def test_review_status_update():
     audit_id = save_audit_result(
         employee="review테스트",
