@@ -1,0 +1,281 @@
+{
+  "name": "AuditFlow - Expense Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ef4d57a1-4513-4bd0-870d-f0a12fb9b7b3",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1A4wkWhNwqk4NzSlBWQrqgno-1sdSFjRtEfMbztFcauk",
+          "mode": "list",
+          "cachedResultName": "제목 없는비용 데이터가 있는 Google Sheet 스프레드시트",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1A4wkWhNwqk4NzSlBWQrqgno-1sdSFjRtEfMbztFcauk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "시트1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1A4wkWhNwqk4NzSlBWQrqgno-1sdSFjRtEfMbztFcauk/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "eb508657-aa21-4cbd-9ecc-1e828cec61b9",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "maITgB6cl2goCmve",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/audit",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"employee\": \"{{ $json.employee }}\",\n  \"department\": \"{{ $json.department }}\",\n  \"category\": \"{{ $json.category }}\",\n  \"amount\": {{ $json.amount }},\n  \"date\": \"{{ $json.date }}\",\n  \"vendor\": \"{{ $json.vendor }}\",\n  \"reason\": \"{{ $json.reason }}\",\n  \"has_receipt\": \"{{ $json.has_receipt }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "39575774-e859-45ea-ad24-f842bf776dbb",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4ce1fb6b-3619-4593-b1cd-3fc38df71e57",
+              "leftValue": "={{ $json.risk_type }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        0
+      ],
+      "id": "bb177a50-72fe-4e48-af20-b242084b3c63",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1A4wkWhNwqk4NzSlBWQrqgno-1sdSFjRtEfMbztFcauk",
+          "mode": "list",
+          "cachedResultName": "제목 없는비용 데이터가 있는 Google Sheet 스프레드시트",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1A4wkWhNwqk4NzSlBWQrqgno-1sdSFjRtEfMbztFcauk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 6037260,
+          "mode": "list",
+          "cachedResultName": "위험결과",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1A4wkWhNwqk4NzSlBWQrqgno-1sdSFjRtEfMbztFcauk/edit#gid=6037260"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "employee": "HTTP Request의 employee",
+            "category": "HTTP Request의 category",
+            "amount": "HTTP Request의 amount",
+            "risk_type": "HTTP Request의 risk_type",
+            "risk_reason": "HTTP Request의 risk_reason",
+            "policy_evidence": "HTTP Request의 policy_evidence",
+            "draft_message": "HTTP Request의 draft_message"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "employee",
+              "displayName": "employee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "risk_type",
+              "displayName": "risk_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "risk_reason",
+              "displayName": "risk_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "policy_evidence",
+              "displayName": "policy_evidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "draft_message",
+              "displayName": "draft_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        896,
+        -96
+      ],
+      "id": "f0f6505f-d72c-459a-8d57-84e4ac70fdeb",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "maITgB6cl2goCmve",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "ixhL7C9nVhkZFfw3",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "0f73136a-2965-4e43-a7f7-99beaa1bebf2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dcb319a7314739370a93b8cbd639dc5f2065b586e6e5fc91f8dcfe72365a1c99"
+  },
+  "nodeGroups": [],
+  "id": "1uvf35uxrifOeduh",
+  "tags": []
+}

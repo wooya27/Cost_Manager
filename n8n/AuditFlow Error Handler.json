@@ -1,0 +1,138 @@
+{
+  "name": "AuditFlow Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "98d9903e-1968-4299-9310-3bfd1df80599",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1A4wkWhNwqk4NzSlBWQrqgno-1sdSFjRtEfMbztFcauk",
+          "mode": "list",
+          "cachedResultName": "제목 없는비용 데이터가 있는 Google Sheet 스프레드시트",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1A4wkWhNwqk4NzSlBWQrqgno-1sdSFjRtEfMbztFcauk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1288448120,
+          "mode": "list",
+          "cachedResultName": "Error_Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1A4wkWhNwqk4NzSlBWQrqgno-1sdSFjRtEfMbztFcauk/edit#gid=1288448120"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{$now}}",
+            "workflow_name": "={{$json.workflow.name}}",
+            "error_message": "={{$json.execution.error.message}}",
+            "execution_id": "={{$json.execution.id}}",
+            "status": "FAILED"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "93829603-a31a-44e0-ad72-6ad5f9fcf170",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "maITgB6cl2goCmve",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "fd9a22b5-2202-4f7d-bb35-89321ba23052",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dcb319a7314739370a93b8cbd639dc5f2065b586e6e5fc91f8dcfe72365a1c99"
+  },
+  "nodeGroups": [],
+  "id": "ixhL7C9nVhkZFfw3",
+  "tags": []
+}
