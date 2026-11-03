@@ -25,11 +25,21 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("▶ create_tables() 실행 시작")
-    create_tables()
+
+    try:
+        create_tables()
+
+    except Exception as e:
+        print(
+            "❌ create_tables() 실패:",
+            repr(e)
+        )
+
+        raise
+
     print("✅ create_tables() 실행 완료")
 
     yield
-
 
 app = FastAPI(lifespan=lifespan)
 
