@@ -302,3 +302,67 @@ def test_supply_approval_boundary():
 
     assert "사무용품 추가 승인" not in first_risk_types
     assert "사무용품 추가 승인" in second_risk_types
+
+
+# =========================================================
+# B07 실패 처리 테스트 (API /audit 경로)
+# =========================================================
+
+def test_api_llm_failure_falls_back_to_template():
+    """근거는 있는데 LLM이 예외를 던지면 Template fallback으로 넘어간다."""
+    with patch(
+        "api.main.find_similar_policies",
+        return_value=[(1, "식대는 1인 20,000원 한도.", "policy.txt", 0.95)]
+    ), patch(
+        "api.main.make_llm_draft",
+        side_effect=Exception("LLM timeout")
+    ), patch(
+        "api.main.save_audit_result",
+        return_value=999
+    ):
+        response = client.post(
+            "/audit",
+            json={
+                "employee": "김민수",
+                "department": "개발팀",
+                "category": "식대",
+                "amount": 50000,
+                "date": "2026-10-31",
+                "vendor": "테스트식당",
+                "reason": "점심 식사",
+                "has_receipt": "Y"
+            }
+        )
+
+    assert response.status_code == 200
+    assert response.json()["draft_source"] == "template"
+
+
+def test_api_db_save_failure_no_false_success():
+    """DB 저장이 실패하면 가짜 성공 id(200)를 돌려주지 않는다."""
+    safe_client = TestClient(app, raise_server_exceptions=False)
+
+    with patch(
+        "api.main.find_similar_policies",
+        return_value=[]
+    ), patch(
+        "api.main.save_audit_result",
+        side_effect=Exception("DB down")
+    ):
+        response = safe_client.post(
+            "/audit",
+            json={
+                "employee": "김민수",
+                "department": "개발팀",
+                "category": "식대",
+                "amount": 50000,
+                "date": "2026-10-31",
+                "vendor": "테스트식당",
+                "reason": "점심 식사",
+                "has_receipt": "N"
+            }
+        )
+
+    # 저장 실패 → 500, 성공 응답(200)이나 가짜 id가 나오면 안 됨
+    assert response.status_code == 500
+    assert "999" not in response.text
