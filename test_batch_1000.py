@@ -52,7 +52,7 @@ response = requests.post(
 # 7. 결과 확인
 print("HTTP 상태:", response.status_code)
 
-data = response.json()
+data = response.json()  
 
 print("검사된 건수:", data["count"])
 

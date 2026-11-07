@@ -30,6 +30,13 @@ def create_tables():
 
     with conn.cursor() as cur:
 
+        # pgVector 확장 활성화 (새 환경에서도 RAG 벡터 검색이 가능하도록)
+        cur.execute(
+            """
+            CREATE EXTENSION IF NOT EXISTS vector;
+            """
+        )
+
         # 테이블이 없으면 생성
         cur.execute(
             """
@@ -85,6 +92,19 @@ def create_tables():
             ALTER TABLE audit_results
             ADD COLUMN IF NOT EXISTS updated_at
             TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+            """
+        )
+
+        # RAG 규정 벡터 테이블 (새 환경에서도 자동 준비)
+        # ※ 데이터(embedding) 적재는 별도 스크립트로 수행한다.
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS policy_chunks (
+                id BIGSERIAL PRIMARY KEY,
+                text TEXT NOT NULL,
+                source TEXT,
+                embedding vector
+            );
             """
         )
 

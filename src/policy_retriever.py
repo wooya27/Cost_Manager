@@ -17,6 +17,26 @@ client = genai.Client(
 #     #st.write(policy_message)
 #     print(policy_message)
 
+def load_policy_messages(path="policy.txt"):
+    """policy.txt를 빈 줄 기준으로 규정 블록 리스트로 읽는다.
+
+    각 블록 예: "[식대 규정]\n일반 식대는 1인 기준 20,000원을 초과할 수 없으며 ..."
+    (import 시점이 아니라 호출 시점에 읽어 CWD 의존으로 테스트가 깨지지 않게 한다.)
+    """
+    import re
+
+    with open(path, encoding="utf-8") as f:
+        raw = f.read()
+
+    blocks = [
+        block.strip()
+        for block in re.split(r"\n\s*\n", raw)
+        if block.strip()
+    ]
+
+    return blocks
+
+
 def make_policy_chunks(policy_messages):
     chunks = []
 

@@ -1,5 +1,11 @@
 # Cost_Manager — AuditFlow AI
 
+> **문제:** 비용정산 검수에서 영수증·한도·중복 확인 → 규정 검색 → 보완요청 작성이 매 건 반복된다.
+> **처리:** `POST /audit → 규칙 기반 위험탐지(risks[]) → pgVector 규정검색 → LLM/Template 초안 → PostgreSQL 저장 → PATCH 검수(Human-in-the-loop)`
+> **기술:** FastAPI · PostgreSQL/pgVector · Gemini(LLM·Embedding) · LangGraph(독립 구현) · pytest/GitHub Actions · Docker
+> **데모:** Swagger `/docs` (로컬 `http://localhost:8000/docs`) · 배포 URL은 배포 후 기재
+> **검증 상태:** 비통합 테스트 13 / 통합 3 PASS · 독립 평가 12건 P/R/F1=1.000(소표본) · RAG Hit@3는 검색지표(자동생성 질의)
+
 ## 1. 프로젝트 소개
 
 **AuditFlow AI**는 비용정산 데이터를 입력받아 위험 가능성이 있는 비용 건을 자동으로 탐지하고, 관련 사내 규정을 RAG로 검색한 뒤 LLM을 활용해 보완 요청 초안을 생성하는 **비용정산 1차 검수 시스템**입니다.
@@ -369,7 +375,7 @@ draft_message 추가
 review_status 추가
 ```
 
-현재 단계에서는 Python 함수형 Workflow를 사용하고 있으며, 다음 단계에서 **LangGraph 기반 State / Node / Conditional Edge 구조**로 확장할 예정입니다.
+**현재 상태(정직 표기):** `src/agent_workflow.py`에 **LangGraph 기반 State / Node / Conditional Edge 구조가 실제로 구현**되어 있습니다(audit → retrieve → generate → retry/fallback → review → save, 위험별 `processed_risks[]` 처리, Mock 테스트 통과). 다만 사용자가 호출하는 `POST /audit`는 아직 이 Graph를 호출하지 않고 **API 내부의 동등한 루프**로 동작합니다. 즉 **LangGraph는 독립 구현 상태이며 API 실연결은 다음 단계**입니다. "모듈에 Graph 코드가 있다"는 것과 "API가 Graph를 실행한다"는 것을 구분해 표기합니다.
 
 ---
 
@@ -615,11 +621,15 @@ GET /audit-results
 
 ### 10.5 Streamlit 실행
 
+> ⚠️ **현재 공식 데모 화면은 Swagger `/docs`입니다.** Streamlit UI(`app.py`)는 위험 탐지 출력이
+> 단일 `risk_type` 컬럼에서 복수 `risks[]` 구조로 바뀐 것을 아직 반영하지 못해(구 컬럼 참조) 전체
+> 실행에 추가 리팩터링이 필요합니다. 데모/시연은 `/docs`로 수행하고, Streamlit 재작업은 다음 단계입니다.
+
 ```text
 streamlit run app.py
 ```
 
-Streamlit에서는 다음 기능을 확인할 수 있습니다.
+Streamlit에서 의도한 기능(재작업 후):
 
 - 비용 CSV 업로드
 - 위험 후보 탐지
@@ -646,31 +656,34 @@ python -m src.rag_evaluator_v2
 
 ## 11. 현재 한계
 
-- 위험 탐지는 현재 업무 규칙 기반으로 동작합니다.
+- 위험 탐지는 현재 업무 규칙 기반으로 동작합니다. (규정 임계값 기반·결정론적)
+- **정확도 vs 회귀 구분:** 1,000건 테스트(`test_regression_1000.py`)는 기대값을 **코드 출력에서 생성**한 **회귀 테스트**이므로 "코드가 안 깨졌다"는 의미이며 **정확도가 아닙니다.** 규정 기준 **정확도**는 사람이 정답을 매긴 **독립 평가셋 12건**(`tests/data/independent_*.csv`)에서 측정했고 이 소표본에서 Precision/Recall/F1 = 1.000입니다(실사용 전반 정확도는 아님).
+- **RAG Hit@3는 "검색 성공률" 지표**이며, 평가 질의 1,037개는 **자동 생성** 데이터입니다(실사용 질의와 다름). 아래 13절 수치는 당시 측정 기록이며, 수치 인용 시 **검색지표·자동생성 질의**라는 한계를 함께 표기합니다.
 - 현재 RAG 지식베이스는 포트폴리오용으로 구성한 61개의 가상 비용 규정을 사용합니다.
-- RAG v2 평가 질의 1,037개는 자동 생성된 평가 데이터이므로 실제 운영 사용자 질의와 차이가 있을 수 있습니다.
-- Vector Search에는 별도의 Reranking을 아직 적용하지 않았습니다.
-- Keyword Search와 Vector Search를 함께 사용하는 Hybrid Search는 아직 적용하지 않았습니다.
-- 현재 Agent Workflow는 Python 함수형 구조이며 실제 LangGraph 적용은 다음 단계에서 진행합니다.
-- Langfuse 기반 Observability는 아직 적용하지 않았습니다.
-- 사용자 인증 및 사용자별 검수 이력 관리 기능은 아직 구현하지 않았습니다.
+- **단건 `/audit` ≠ `/audit/batch`:** 단건은 RAG·LLM·DB 저장까지 수행하고, `/audit/batch`는 여러 행이 필요한 규칙(중복/평균 이상치) **탐지만** 수행하며 RAG·LLM·DB 저장은 하지 않습니다. "batch가 N건 탐지"를 "N건 RAG+LLM 처리"로 표기하지 않습니다.
+- **LangGraph는 독립 구현 상태**이며 `POST /audit`에는 아직 실연결하지 않았습니다(6절 참조).
+- Vector Search에는 Reranking, Keyword+Vector Hybrid Search를 아직 적용하지 않았습니다.
+- Langfuse 기반 Observability는 아직 적용하지 않았습니다(현재 JSONL 로깅).
+- 사용자 인증 및 사용자별 권한/검수 이력 관리 기능은 아직 구현하지 않았습니다.
 - 실제 기업 ERP 또는 비용정산 시스템과는 아직 연동하지 않았습니다.
+- **n8n/클라우드 현재 상태:** n8n 워크플로 설계·필드 매핑은 보유(로컬 URL 기준), 실제 Sheets→n8n→API E2E와 클라우드 배포는 미검증입니다(`docs/evidence/06`, `07`).
 
 ---
 
 ## 12. 향후 확장
 
-- LangGraph 기반 State / Node / Conditional Edge Workflow 적용
-- LLM 성공 / 실패 분기
-- Timeout 및 Retry 처리
-- 최종 실패 시 Template Fallback 강화
-- Langfuse 기반 Observability 적용
-- RAG 실패 사례 분석
-- Reranking 적용 및 성능 비교
-- Keyword + Vector Hybrid Search 비교
-- pytest 기반 자동 테스트
-- CI 파이프라인 구축
-- 사용자별 검수 이력 관리
+**이미 적용된 것** (완료)
+- LangGraph State / Node / Conditional Edge Workflow **독립 구현**(API 실연결은 예정)
+- LLM 성공/실패 분기, Template Fallback, 근거 없음 → needs_review
+- pytest 기반 자동 테스트 + GitHub Actions CI
+- 회귀 테스트(1,000건)와 독립 평가(수기 정답) 분리
+
+**다음 단계** (예정)
+- LangGraph를 `POST /audit`에 실연결(응답 계약 유지)
+- LLM Timeout/Retry 세분화, Langfuse 기반 Observability
+- RAG 실패 사례 분석, Reranking, Keyword + Vector Hybrid Search 비교
+- Sheets→n8n→API→Sheets/Slack E2E 및 클라우드 배포 검증
+- 사용자 인증/권한 및 사용자별 검수 이력 관리
 - 실제 사내 비용 규정 및 ERP 시스템 연동
 
 ---
@@ -695,6 +708,10 @@ Keyword Search는 질문에 규정 키워드가 직접 포함되지 않는 경�
 반면 Vector Search는 표현이 달라도 의미 기반으로 관련 규정을 검색할 수 있었습니다.
 
 다만 v1은 전체 검색 후보가 6개이고 Top-3를 평가하는 소규모 실험이므로 검색 난이도가 낮다는 한계가 있습니다.
+
+> **현재(61개 규정) 재실행 결과 (2026-11-07, `python -m src.rag_evaluator`):**
+> 동일 50질의를 **규정 61개** 풀에서 다시 측정하면 **Keyword 22.0%(11/50) / Vector 82.0%(41/50)**입니다.
+> 규정 풀이 6→61개로 커져 난이도가 올라가 Vector 100%→82%로 하락했으며, **이 수치가 더 현실적**입니다(`docs/evidence/12_rag_rerun.md`). 위 100% 수치는 규정 6개 기준의 과거 기록임을 명시합니다.
 
 ---
 
