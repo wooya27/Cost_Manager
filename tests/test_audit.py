@@ -234,14 +234,14 @@ def test_batch_audit():
 
 def test_no_policy_evidence_skips_llm():
     with patch(
-        "api.main.find_similar_policies",
+        "src.agent_workflow.find_similar_policies",
         return_value=[]
     ):
         with patch(
-            "api.main.make_llm_draft"
+            "src.agent_workflow.make_llm_draft"
         ) as mock_llm:
             with patch(
-                "api.main.save_audit_result",
+                "src.agent_workflow.save_audit_result",
                 return_value=999
             ):
                 response = client.post(
@@ -311,13 +311,13 @@ def test_supply_approval_boundary():
 def test_api_llm_failure_falls_back_to_template():
     """근거는 있는데 LLM이 예외를 던지면 Template fallback으로 넘어간다."""
     with patch(
-        "api.main.find_similar_policies",
+        "src.agent_workflow.find_similar_policies",
         return_value=[(1, "식대는 1인 20,000원 한도.", "policy.txt", 0.95)]
     ), patch(
-        "api.main.make_llm_draft",
+        "src.agent_workflow.make_llm_draft",
         side_effect=Exception("LLM timeout")
     ), patch(
-        "api.main.save_audit_result",
+        "src.agent_workflow.save_audit_result",
         return_value=999
     ):
         response = client.post(
@@ -339,16 +339,20 @@ def test_api_llm_failure_falls_back_to_template():
 
 
 def test_api_db_save_failure_no_false_success():
-    """DB 저장이 실패하면 가짜 성공 id(200)를 돌려주지 않는다."""
-    safe_client = TestClient(app, raise_server_exceptions=False)
+
+    safe_client = TestClient(
+        app,
+        raise_server_exceptions=False
+    )
 
     with patch(
-        "api.main.find_similar_policies",
+        "src.agent_workflow.find_similar_policies",
         return_value=[]
     ), patch(
-        "api.main.save_audit_result",
+        "src.agent_workflow.save_audit_result",
         side_effect=Exception("DB down")
-    ):
+    ) as mock_save:
+
         response = safe_client.post(
             "/audit",
             json={
@@ -363,6 +367,9 @@ def test_api_db_save_failure_no_false_success():
             }
         )
 
-    # 저장 실패 → 500, 성공 응답(200)이나 가짜 id가 나오면 안 됨
+    # DB 저장 함수 호출 확인
+    mock_save.assert_called_once()
+
+    # 저장 실패 시 500 응답 확인
     assert response.status_code == 500
     assert "999" not in response.text
