@@ -307,3 +307,31 @@ python -m pytest -m "not integration" -q   # CI 동일 범위 집계
 - 남은 것: commit/push+CI, 로그 gitignore, DAY2(README/포트폴리오/데모/면접).
 
 ---
+
+## B11~B12 — n8n 자동화 + 배포 준비
+
+### 꼭 알 개념
+
+- **세 역할 구분 (면접 단골)**: FastAPI=실제 검수 로직 API / LangGraph=그 로직의 상태·분기·실패경로 구현 / n8n=외부 업무도구(Google Sheets 등)와 API를 잇는 오케스트레이션.
+- **n8n 자격증명은 워크플로 JSON 밖**: OAuth 토큰/API키는 n8n이 따로 저장 → JSON 커밋해도 비밀키는 안 올라감. 단 Google Sheets `documentId`(시트 식별자)는 JSON에 들어가니 공개 저장소면 확인.
+- **필드 타입 매핑**: n8n HTTP body에서 `"amount": {{ $json.amount }}` 처럼 **따옴표 없이** 넣어야 숫자로 전송됨 → Pydantic `int` 통과. 따옴표로 감싸면 문자열 → `422`.
+- **localhost vs 배포 URL**: `host.docker.internal:8000`은 로컬. 클라우드 배포하면 이 URL을 배포 주소로 바꿔야 E2E가 "클라우드 호출"이 됨.
+- **Secret 분리 원칙**: `.env`(실제 값)는 `.gitignore`, `.env.example`(이름만) 추적. compose/배포는 환경변수로 주입. → 코드엔 비밀값 없음.
+- **런타임 생성물은 git에서 빼기**: `logs/*.jsonl`이 추적되면 (1) 리포 지저분 (2) 로그에 실데이터 섞이면 유출. `git rm --cached` + `.gitignore`.
+
+### 꼭 알 명령어
+
+```bash
+docker compose up -d                 # API+DB 한 번에
+python -m uvicorn api.main:app --reload
+git ls-files | grep env              # 추적되는 env 파일 확인
+git show HEAD:.gitignore             # 커밋된 gitignore 보기
+git rm --cached logs/*.jsonl         # (승인 후) 로그 추적 해제
+```
+
+### 이 블록 결과물
+- `docs/evidence/06_n8n_status.md` (n8n 노드/매핑/비밀키/E2E 상태)
+- `docs/evidence/07_runbook.md` (로컬 실행·환경변수·클라우드 배포 절차·정리 항목)
+- 확인: `.env` gitignore OK, compose 하드코딩 없음 / ⚠️ logs 추적됨(정리 필요)
+
+---
