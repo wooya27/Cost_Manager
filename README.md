@@ -621,11 +621,15 @@ GET /audit-results
 
 ### 10.5 Streamlit 실행
 
+> ⚠️ **현재 공식 데모 화면은 Swagger `/docs`입니다.** Streamlit UI(`app.py`)는 위험 탐지 출력이
+> 단일 `risk_type` 컬럼에서 복수 `risks[]` 구조로 바뀐 것을 아직 반영하지 못해(구 컬럼 참조) 전체
+> 실행에 추가 리팩터링이 필요합니다. 데모/시연은 `/docs`로 수행하고, Streamlit 재작업은 다음 단계입니다.
+
 ```text
 streamlit run app.py
 ```
 
-Streamlit에서는 다음 기능을 확인할 수 있습니다.
+Streamlit에서 의도한 기능(재작업 후):
 
 - 비용 CSV 업로드
 - 위험 후보 탐지
