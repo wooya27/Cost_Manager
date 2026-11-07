@@ -4,8 +4,11 @@
 import streamlit as st
 import pandas as pd 
 from src.audit_rules import detect_risks
-from src.policy_retriever import find_policy_evidence, policy_messages 
+from src.policy_retriever import find_policy_evidence, load_policy_messages
 from src.draft_generator import make_draft
+
+# 규정 블록 리스트 (policy.txt에서 로드) — 키워드 기반 규정 검색에 사용
+policy_messages = load_policy_messages()
 
 st.title("AuditFlow AI")
 st.write("비용정산 1차 검수 어시스턴트")
