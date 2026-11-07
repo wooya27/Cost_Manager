@@ -356,3 +356,29 @@ git rm --cached logs/*.jsonl         # (승인 후) 로그 추적 해제
 - 화면 녹화/캡처 4컷, PDF 2p 내보내기, 면접 구술 연습·녹음, (가능하면) n8n E2E·클라우드 배포
 
 ---
+
+## 추가 — 10.17 남은 항목 중 계정 없이 가능한 것 (초기58·RAG재실행·평가확장)
+
+### 꼭 알 개념
+
+- **git 히스토리에서 삭제된 파일 복구**: 지워진 파일도 커밋에 남아 있다. `git log --all --name-status -- '*파일'`로 추가/삭제 이력을 찾고, 삭제 직전 커밋에서 `git show <sha>:경로 > 복구파일`로 되살린다.
+- **"수정 전 vs 수정 후"는 같은 데이터로**: 초기 58건을 버리지 않고 현재 코드로 재실행해야 "무엇이 좋아졌는지"를 같은 기준으로 비교할 수 있다. (영수증누락 소실 0, 비교형 배치 탐지, 복합위험 동시표현)
+- **평가 수치는 "조건"이 바뀌면 달라진다 (중요)**: 같은 50질의·같은 Vector라도 **규정 풀이 6→61개로 커지면 Hit@3가 100%→82%로 떨어진다.** 그래서 수치엔 반드시 (규정 수 / 질의 출처 / 지표 종류)를 붙여야 한다. 과거 기록을 현재 수치처럼 쓰면 안 된다.
+- **평가셋 설계 시 간섭 피하기**: 이상비용 규칙(카테고리 평균×2)을 테스트하려면, 기존 케이스의 카테고리 평균을 흔들지 않게 **새 카테고리(출장)**로 격리해서 넣는다. groupby가 카테고리별로 독립이라 다른 케이스에 영향 없음.
+
+### 꼭 알 명령어
+
+```bash
+git log --all --oneline --name-status -- '*sample_expenses.csv'   # 파일 이력 추적
+git show 3cdf74a:sample_expenses.csv > tests/data/initial_58_cases.csv  # 복구
+python -m src.rag_evaluator                                       # Keyword vs Vector 재실행
+PYTHONPATH=. python scripts/evaluate_risks.py                     # 독립 평가 P/R/F1
+```
+
+### 이 라운드 결과물
+- `tests/data/initial_58_cases.csv`(복구) + `tests/test_initial_58.py`(구조보존 4테스트) + `docs/evidence/11`
+- RAG 재실행 수치 `docs/evidence/12`: 규정61 기준 **Keyword 22% / Vector 82%** (README 보정)
+- 독립 평가 12→15건(이상비용 포함) P/R/F1=1.000, 빈 placeholder 제거, `docs/evidence/05` 갱신
+- 전체 테스트 **17 passed** / 통합 3
+
+---
