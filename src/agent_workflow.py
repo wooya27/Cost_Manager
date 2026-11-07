@@ -24,6 +24,7 @@ class AuditState(TypedDict, total=False):
     run_id: str
     audit_id: int
     retry_count: int
+    processed_risks: list[dict]
 # state = 현재 작업정보를 들고다니는 가방
 # node = workflow 에서 자기 한가지 일만 하는 함수 
 # node 함수 3개 만든것
@@ -69,37 +70,41 @@ def retrieve_node(state: AuditState):
             "risks",
             []
         )
-        # similar_policies = []
 
         if not risks:
             return {
-                "policy_evidence": ""
+                "processed_risks": []
             }
 
-        risk = risks[0]
+        # 위험마다 '따로' 규정을 검색해 processed_risks[]에 누적한다.
+        # (여러 위험을 policy_evidence 문자열 하나로 뭉치면 안 된다)
+        processed_risks = []
 
-        risk_reason = risk["risk_reason"]
+        for risk in risks:
 
-        similar_policies = find_similar_policies(
-            risk_reason,
-            top_k=3
-        )
+            similar_policies = find_similar_policies(
+                risk["risk_reason"],
+                top_k=3
+            )
 
-        if not similar_policies:
-            return {
-                "policy_evidence": ""
-            }
+            if similar_policies:
+                policy_evidence = "\n\n".join(
+                    policy[1]
+                    for policy in similar_policies
+                )
+            else:
+                policy_evidence = ""
 
-        policy_evidence = "\n\n".join(
-            policy[1]
-            for policy in similar_policies
-        )
+            processed_risks.append({
+                "risk_type": risk["risk_type"],
+                "risk_reason": risk["risk_reason"],
+                "policy_evidence": policy_evidence
+            })
 
         return {
-            "policy_evidence": policy_evidence
+            "processed_risks": processed_risks
         }
-    
-        
+
     finally:
         latency_ms = (
                     time.perf_counter() - start_time
@@ -113,59 +118,61 @@ def retrieve_node(state: AuditState):
 
 def generate_node(state: AuditState):
     start_time = time.perf_counter()
+
     try:
         expense = state["expense"]
 
-        risks = state.get(
-            "risks",
+        processed_risks = state.get(
+            "processed_risks",
             []
         )
 
-        policy_evidence = state.get(
-            "policy_evidence",
-            ""
-        )
-
-        if not risks:
+        if not processed_risks:
             return {
                 "error": "위험 정보 없음"
             }
 
-        if not policy_evidence:
-            return {
-                "error": "규정 근거 없음"
-            }
+        for risk in processed_risks:
 
-        risk = risks[0]
+            policy_evidence = risk.get("policy_evidence")
 
-        result_for_draft = expense.copy()
+            if (
+                not policy_evidence
+                or policy_evidence == "관련 규정 확인 필요"
+            ):
+                risk["draft_message"] = None
+                risk["draft_source"] = "needs_review"
+                continue
 
-        result_for_draft["risk_type"] = risk["risk_type"]
-        result_for_draft["risk_reason"] = risk["risk_reason"]
+            result_for_draft = expense.copy()
 
-        try:
+            result_for_draft["risk_type"] = risk["risk_type"]
+            result_for_draft["risk_reason"] = risk["risk_reason"]
 
+            try:
+                draft_message, draft_source = make_llm_draft(
+                    result_for_draft,
+                    policy_evidence
+                )
 
-            draft_message, draft_source = make_llm_draft(
-                result_for_draft,
-                policy_evidence
-            )
+            except Exception:
+                draft_message, draft_source = make_draft(
+                    result_for_draft
+                )
 
-            return {
-                "draft_message": draft_message,
-                "draft_source": draft_source,
-                "error": ""
-            }
+            risk["draft_message"] = draft_message
+            risk["draft_source"] = draft_source
 
-        except Exception as e:
+        return {
+            "processed_risks": processed_risks,
+            "error": ""
+        }
 
-            return {
-                "error": str(e)
-            }
     finally:
         latency_ms = (
             time.perf_counter() - start_time
         ) * 1000
+
         log_node(
             state,
             "generate",
@@ -240,8 +247,9 @@ def retry_node(state: AuditState):
 def review_gate_node(state: AuditState):
     start_time = time.perf_counter()
     try:
+        # API 상태값(unreviewed/approved/need_revision/rejected)과 통일
         return {
-            "review_status": "미검토"
+            "review_status": "unreviewed"
         }
     finally:
         latency_ms = (
@@ -295,41 +303,6 @@ def fallback_node(state: AuditState):
         )
 
 
-# 1. 위험 확인 Node
-    # 정확히 말하면 아무것도 안 하는 게 아니라, 받은 state를 그대로 다음 단계로 넘기는 통과(pass-through) Node야.
-    # 위험 정보가 이미 들어왔는지 확인하는 자리인데, 지금은 앞 단계에서 risk_type, risk_reason이 이미 만들어져 있으니까 그대로 넘긴다.”
-def check_risk_node(state):
-    return state
-
-# 2. 규정 확인 Node
-def policy_search_node(state): #현재 작업 정보를 state로 받아서 규정 검색을 담당하는 작업 단계를 만든다.
-    risk_type = state["risk_type"]
-
-    risk_reason = state["risk_reason"]
-
-    evidence = find_similar_policies(
-          risk_reason
-      )
-
-    state["policy_evidence"] = evidence #찾은 규정 근거를 State의 policy_evidence 칸에 써 넣는다.
-    
-    return state
-
-# 3. 초안 생성 Node
-def draft_message_node(state):  #초안생성을 node가 일했으니까, 일한결과를 state에도 기록해줘야 다음단계를 쓸수있다
-    message, source = make_draft(state)
-    # state가 함수 안으로 들어가는 순간, 함수 내부에서는 그걸 row라는 이름으로 부르게 돼.
-    # state라는 표/가방 안에 "draft_message"라는 칸을 만들고, 오른쪽 message 안에 들어 있는 값을 그 칸에 넣어라.
-    # 오른쪽 message 안에 들어 있는 값을 그 칸에 넣어라.
-
-    state["draft_message"] = message # node 안에 잠깐 존재하는 임시변수
-    state["draft_source"] = source
-
-    return state
-
-# state를 위험 확인 Node에 넣고 
-# 그 결과 state를 규정 검색 Node에 넣고 
-# 그 결과를 다시 초안 생성 Node에 넣는다.
 def run_workflow(state: AuditState):
 
     state["run_id"] = str(
@@ -352,48 +325,26 @@ def save_node(state: AuditState):
     try:
         expense = state["expense"]
 
-        risks = state.get(
-            "risks",
-            []
-        )
+        processed_risks = state.get("processed_risks",[])
 
-        policy_evidence = state.get(
-            "policy_evidence",
-            ""
-        )
+        if processed_risks:
 
-        draft_message = state.get(
-            "draft_message",
-            ""
-        )
+            primary_risk = processed_risks[0]
 
-        draft_source = state.get(
-            "draft_source",
-            ""
-        )
+            risk_type = primary_risk["risk_type"]
+            risk_reason = primary_risk["risk_reason"]
 
-        if risks:
-
-            risk = risks[0]
-
-            risk_type = risk["risk_type"]
-            risk_reason = risk["risk_reason"]
-
-            processed_risk = risk.copy()
-
-            processed_risk["policy_evidence"] = policy_evidence
-            processed_risk["draft_message"] = draft_message
-            processed_risk["draft_source"] = draft_source
-
-            processed_risks = [
-                processed_risk
-            ]
+            policy_evidence = primary_risk.get("policy_evidence")
+            draft_message = primary_risk.get("draft_message")
+            draft_source = primary_risk.get("draft_source")
 
         else:
 
             risk_type = None
             risk_reason = None
-            processed_risks = []
+            policy_evidence = None
+            draft_message = None
+            draft_source = None
 
         audit_id = save_audit_result(
             employee=expense["employee"],
@@ -459,12 +410,12 @@ def route_after_retry(state: AuditState):
 
 def route_after_retrieve(state: AuditState):
 
-    policy_evidence = state.get(
-        "policy_evidence",
-        ""
+    processed_risks = state.get(
+        "processed_risks",
+        []
     )
 
-    if policy_evidence:
+    if processed_risks:
         return "generate"
 
     return "review"
